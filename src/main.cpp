@@ -39,20 +39,21 @@ static size_t s_serialLen = 0;
 
 static void printDeviceList(void)
 {
-    const uint64_t nowSeconds = (uint64_t)(esp_timer_get_time() / 1000000);
+    const uint64_t nowMs = (uint64_t)(esp_timer_get_time() / 1000);
     const uint8_t count = espBroker_deviceCount();
 
-    ESP_LOGI("Serial", "%u device(s):", count);
+    ESP_LOGI("Serial", "%u session(s):", count);
     for (uint8_t i = 0; i < count; i++)
     {
         const NightMare::Device *device = espBroker_deviceAt(i);
         if (device == nullptr)
             continue;
 
-        ESP_LOGI("Serial", "  %s subs=%u lastSeen=%llus auth=%s lastWill=%s",
-                 device->address().toString().c_str(), (unsigned)device->subscriptionCount(),
-                 (unsigned long long)(nowSeconds - device->lastSeenAt()),
-                 device->isAuthenticated() ? "yes" : "no", device->hasLastWill() ? "yes" : "no");
+        ESP_LOGI("Serial", "  %s cid=%u state=%s subs=%u lastSeen=%llus lastWill=%s",
+                 device->address().toString().c_str(), (unsigned)device->cid(),
+                 NightMare::connectionStateName(device->state()), (unsigned)device->subscriptionCount(),
+                 (unsigned long long)((nowMs - device->lastSeenAtMs()) / 1000),
+                 device->hasLastWill() ? "yes" : "no");
     }
 }
 

@@ -69,7 +69,7 @@ void replyMessage(const NightMare::Message &current, const NightMare::Message &r
         mqtt_publish(reply);
 }
 
-// {"wifi":bool,"mqtt":bool,"subscribers":N,"devices":[{"mac","subs","lastSeenS","auth","lastWill"},...]}
+// {"wifi":bool,"mqtt":bool,"subscribers":N,"devices":[{"mac","cid","state","subs","lastSeenS","lastWill"},...]}
 static NightMare::Message buildDebugTelemetry()
 {
     std::string json = "{\"wifi\":";
@@ -79,7 +79,7 @@ static NightMare::Message buildDebugTelemetry()
     json += ",\"subscribers\":" + std::to_string(espBroker_subscriberCount());
     json += ",\"devices\":[";
 
-    const uint64_t nowSeconds = (uint64_t)(esp_timer_get_time() / 1000000);
+    const uint64_t nowMs = (uint64_t)(esp_timer_get_time() / 1000);
     const uint8_t deviceCount = espBroker_deviceCount();
     for (uint8_t i = 0; i < deviceCount; i++)
     {
@@ -89,11 +89,12 @@ static NightMare::Message buildDebugTelemetry()
         if (i > 0)
             json += ",";
 
-        char row[128];
-        snprintf(row, sizeof(row), "{\"mac\":\"%s\",\"subs\":%u,\"lastSeenS\":%llu,\"auth\":%s,\"lastWill\":%s}",
-                 device->address().toString().c_str(), (unsigned)device->subscriptionCount(),
-                 (unsigned long long)(nowSeconds - device->lastSeenAt()),
-                 device->isAuthenticated() ? "true" : "false", device->hasLastWill() ? "true" : "false");
+        char row[160];
+        snprintf(row, sizeof(row), "{\"mac\":\"%s\",\"cid\":%u,\"state\":\"%s\",\"subs\":%u,\"lastSeenS\":%llu,\"lastWill\":%s}",
+                 device->address().toString().c_str(), (unsigned)device->cid(),
+                 NightMare::connectionStateName(device->state()), (unsigned)device->subscriptionCount(),
+                 (unsigned long long)((nowMs - device->lastSeenAtMs()) / 1000),
+                 device->hasLastWill() ? "true" : "false");
         json += row;
     }
     json += "]}";

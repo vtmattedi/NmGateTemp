@@ -1,3 +1,6 @@
 # MQTT 5 is required for the no_local subscription option the gateway uses to
 # avoid replicating its own publishes back from the broker.
 CONFIG_MQTT_PROTOCOL_5=y
+
+# One encrypted ESP-NOW peer per session: espDeviceManager::MaxDevices (16).
+CONFIG_ESP_WIFI_ESPNOW_MAX_ENCRYPT_NUM=16

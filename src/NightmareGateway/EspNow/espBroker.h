@@ -26,21 +26,22 @@ bool espBroker_beaconActive(void);
 // listening -- the beacon doesn't care whether anyone is.
 uint32_t espBroker_secondsSinceLastBeacon(void);
 
-void onEspNowMessageReceived(NightMare::Device *device, const NightMare::Frame &frame);
+// Both only reach a CONNECTED session (false otherwise); frames carry its cid
+// and go out encrypted with its LMK.
 bool espBroker_sendMessage(const NightMare::Device *device, const NightMare::Message &message);
 bool espBroker_sendFrame(const NightMare::Device *device, const NightMare::Frame &frame);
 
-// Fans a message out to every device subscribed to its topic. Passing the
-// sender in `except` skips it, which is what keeps a message from echoing back
-// to whoever produced it.
+// Fans a message out to every CONNECTED session subscribed to its topic.
+// Passing the sender in `except` skips it, which is what keeps a message from
+// echoing back to whoever produced it.
 bool espBroker_broadcastMessage(const NightMare::Message &message, const NightMare::Device *except = nullptr);
 
-// Devices currently registered with at least one subscription.
+// CONNECTED sessions with at least one subscription.
 uint8_t espBroker_subscriberCount(void);
 
-// Read-only enumeration of every currently registered device, for building
-// things like gateway telemetry. Index order is not meaningful and may change
-// as devices connect/disconnect.
+// Read-only enumeration of every session, in any state (see
+// Device::state()), for building things like gateway telemetry. Index order is
+// not meaningful and may change as devices connect/disconnect.
 uint8_t espBroker_deviceCount(void);
 const NightMare::Device *espBroker_deviceAt(uint8_t index);
 

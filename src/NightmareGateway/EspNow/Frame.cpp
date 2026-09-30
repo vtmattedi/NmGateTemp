@@ -1,62 +1,186 @@
 #include "Frame.h"
 #include <string.h>
-#include "esp_log.h"
 
-static const char *TAG = "Frame";
+// Shared byte for byte by the gateway and the NightMareNetwork client: no
+// logging or framework dependency in here.
 
 namespace NightMare
 {
-    FrameHeader encodeFrameHeader(uint16_t messageId, VersionType version, FrameType type, uint16_t frameIndex, uint16_t totalFrames, uint16_t length)
+    namespace
     {
-        FrameHeader header;
-        header.messageId = messageId;
-        header.version = static_cast<uint8_t>(version);
-        header.type = static_cast<uint8_t>(type);
-        header.frameIndex = frameIndex;
-        header.totalFrames = totalFrames;
-        header.length = length;
-        return header;
+        bool knownType(uint8_t type)
+        {
+            return type <= static_cast<uint8_t>(FrameType::ERROR);
+        }
+
+        // Handshake frames run before a session exists and must carry cid 0;
+        // CONNACK is the one that hands the new cid out.
+        enum class CidRule : uint8_t
+        {
+            ZERO,
+            NONZERO,
+            ANY,
+        };
+
+        CidRule cidRule(FrameType type)
+        {
+            switch (type)
+            {
+            case FrameType::BEACON:
+            case FrameType::CONNECT:
+            case FrameType::CHALLENGE:
+            case FrameType::AUTH:
+                return CidRule::ZERO;
+            case FrameType::ERROR:
+                return CidRule::ANY; // an INVALID_SESSION reply has no valid cid to carry
+            default:
+                return CidRule::NONZERO;
+            }
+        }
+
+        // -1: variable length.
+        int fixedPayloadSize(FrameType type)
+        {
+            switch (type)
+            {
+            case FrameType::CONNECT: return sizeof(ConnectPayload);
+            case FrameType::CHALLENGE: return sizeof(ChallengePayload);
+            case FrameType::AUTH: return sizeof(AuthPayload);
+            case FrameType::CONNACK: return sizeof(ConnAckPayload);
+            case FrameType::DISCONNECT:
+            case FrameType::PING:
+            case FrameType::PONG:
+            case FrameType::ACK:
+                return 0;
+            case FrameType::ERROR: return 1;
+            default: return -1;
+            }
+        }
     }
 
-    bool decodeFrameHeader(FrameHeader &out, const uint8_t *data, size_t length)
+    const char *frameTypeName(uint8_t type)
     {
-        if (data == nullptr || length < sizeof(FrameHeader))
-            return false;
+        switch (static_cast<FrameType>(type))
+        {
+        case FrameType::BEACON: return "BEACON";
+        case FrameType::CONNECT: return "CONNECT";
+        case FrameType::CHALLENGE: return "CHALLENGE";
+        case FrameType::AUTH: return "AUTH";
+        case FrameType::CONNACK: return "CONNACK";
+        case FrameType::DISCONNECT: return "DISCONNECT";
+        case FrameType::PING: return "PING";
+        case FrameType::PONG: return "PONG";
+        case FrameType::SUBSCRIBE: return "SUBSCRIBE";
+        case FrameType::UNSUBSCRIBE: return "UNSUBSCRIBE";
+        case FrameType::MESSAGE: return "MESSAGE";
+        case FrameType::LAST_WILL: return "LAST_WILL";
+        case FrameType::ACK: return "ACK";
+        case FrameType::ERROR: return "ERROR";
+        }
+        return "?";
+    }
+
+    const char *frameCheckName(FrameCheck check)
+    {
+        switch (check)
+        {
+        case FrameCheck::OK: return "ok";
+        case FrameCheck::TOO_SHORT: return "shorter than a header";
+        case FrameCheck::BAD_LENGTH: return "length disagrees with the packet";
+        case FrameCheck::UNSUPPORTED_FRAMING: return "unsupported ESP-NOW framing version";
+        case FrameCheck::UNSUPPORTED_PROTOCOL: return "unsupported NM protocol version";
+        case FrameCheck::UNKNOWN_TYPE: return "unknown frame type";
+        case FrameCheck::BAD_FRAGMENT: return "bad fragment fields";
+        case FrameCheck::TOO_MANY_FRAGMENTS: return "too many fragments";
+        case FrameCheck::BAD_CID: return "cid not valid for this frame type";
+        case FrameCheck::BAD_PAYLOAD: return "wrong payload size";
+        }
+        return "?";
+    }
+
+    FrameCheck validateFrame(const uint8_t *data, size_t length)
+    {
+        if (data == nullptr || length < FrameHeaderSize)
+            return FrameCheck::TOO_SHORT;
 
         FrameHeader header;
-        memcpy(&header, data, sizeof(FrameHeader));
-        if (header.length > length - sizeof(FrameHeader))
-            return false;
+        memcpy(&header, data, FrameHeaderSize);
 
-        out = header;
+        // Only V1 has a runtime; V2 is advertised as a capability at most.
+        if (espNowVersion(header.version) != static_cast<uint8_t>(EspNowFrameVersion::V1))
+            return FrameCheck::UNSUPPORTED_FRAMING;
+        if (nmProtocolVersion(header.version) != NM_PROTOCOL_VERSION)
+            return FrameCheck::UNSUPPORTED_PROTOCOL;
+        if (length > MaxPacketSizeV1 || header.length != length - FrameHeaderSize)
+            return FrameCheck::BAD_LENGTH;
+        if (!knownType(header.type))
+            return FrameCheck::UNKNOWN_TYPE;
+
+        const FrameType type = static_cast<FrameType>(header.type);
+        if (header.totalFrames == 0 || header.frameIndex >= header.totalFrames)
+            return FrameCheck::BAD_FRAGMENT;
+        if (type != FrameType::MESSAGE && header.totalFrames != 1)
+            return FrameCheck::BAD_FRAGMENT;
+        if (header.totalFrames > MaxFramesPerMessage)
+            return FrameCheck::TOO_MANY_FRAGMENTS;
+
+        const CidRule rule = cidRule(type);
+        if ((rule == CidRule::ZERO && header.cid != 0) ||
+            (rule == CidRule::NONZERO && header.cid == 0))
+            return FrameCheck::BAD_CID;
+
+        const int fixed = fixedPayloadSize(type);
+        if (fixed >= 0 && header.length != static_cast<uint16_t>(fixed))
+            return FrameCheck::BAD_PAYLOAD;
+        return FrameCheck::OK;
+    }
+
+    FrameCheck decodeFrame(Frame &out, const uint8_t *data, size_t length)
+    {
+        const FrameCheck check = validateFrame(data, length);
+        if (check != FrameCheck::OK)
+            return check;
+        memcpy(&out.header, data, FrameHeaderSize);
+        memcpy(out.data, data + FrameHeaderSize, out.header.length);
+        return FrameCheck::OK;
+    }
+
+    bool makeFrame(Frame &out, FrameType type, uint16_t messageId, uint16_t cid,
+                   const void *data, size_t length, uint8_t frameIndex, uint8_t totalFrames)
+    {
+        if (length > MaxFrameDataSize || (data == nullptr && length != 0))
+            return false;
+        out.header.messageId = messageId;
+        out.header.version = CurrentFrameVersion;
+        out.header.type = static_cast<uint8_t>(type);
+        out.header.cid = cid;
+        out.header.frameIndex = frameIndex;
+        out.header.totalFrames = totalFrames;
+        out.header.length = static_cast<uint16_t>(length);
+        if (length > 0)
+            memcpy(out.data, data, length);
         return true;
     }
 
-    /// @brief Builds a beacon: data is [versionCount][version bytes...], the
-    /// VersionType values this node speaks. Lets a listener that only knows an
-    /// older/newer protocol version recognize the frame is not for it instead
-    /// of misreading a payload it does not understand.
-    Frame beaconFrame(const uint8_t *supportedVersions, uint8_t versionCount)
+    Frame beaconFrame()
     {
-        const size_t length = (size_t)versionCount + 1; // +1 for the count prefix byte
-        if (length > MaxFrameDataSize)
-        {
-            ESP_LOGE(TAG, "Beacon frame too large: %zu bytes, max is %zu", length, MaxFrameDataSize);
-            return Frame{};
-        }
-
+        static const uint8_t versions[] = {static_cast<uint8_t>(EspNowFrameVersion::V1)};
+        uint8_t data[1 + sizeof(versions)];
+        data[0] = sizeof(versions);
+        memcpy(data + 1, versions, sizeof(versions));
         Frame frame{};
-        frame.header = encodeFrameHeader(0, VersionType::ESP_NOW, FrameType::BEACON, 0, 1, (uint16_t)length);
-        frame.data[0] = versionCount;
-        if (versionCount > 0)
-            memcpy(frame.data + 1, supportedVersions, versionCount);
+        makeFrame(frame, FrameType::BEACON, 0, 0, data, sizeof(data));
         return frame;
     }
 
-    Frame keepAliveFrame(uint16_t messageId)
+    bool beaconSupports(const Frame &beacon, EspNowFrameVersion version)
     {
-        Frame frame{};
-        frame.header = encodeFrameHeader(messageId, VersionType::ESP_NOW, FrameType::CONTROL, 0, 1, 0);
-        return frame;
+        if (beacon.header.length < 1)
+            return false;
+        const size_t count = beacon.data[0];
+        for (size_t i = 0; i < count && i + 1 < beacon.header.length; ++i)
+            if (beacon.data[1 + i] == static_cast<uint8_t>(version))
+                return true;
+        return false;
     }
 }

@@ -5,7 +5,20 @@
 
 namespace NightMare
 {
-    Device::Device(const MacAddress &address) : mac(address) {}
+    const char *connectionStateName(ConnectionState state)
+    {
+        switch (state)
+        {
+        case ConnectionState::HANDSHAKE: return "handshake";
+        case ConnectionState::AUTHENTICATED: return "authenticated";
+        case ConnectionState::SECURING: return "securing";
+        case ConnectionState::CONNECTED: return "connected";
+        }
+        return "?";
+    }
+
+    Device::Device(const MacAddress &address, uint16_t cid, uint64_t nowMs)
+        : mac(address), cid_(cid), lastSeenMs(nowMs) {}
 
     bool Device::isSubscribedTo(const std::string &topic) const
     {
@@ -51,10 +64,10 @@ namespace NightMare
         return false;
     }
 
-    void Device::markSeen(uint8_t signal, uint64_t timestamp)
+    void Device::markSeen(uint8_t signal, uint64_t nowMs)
     {
         rssi = signal;
-        lastSeen = timestamp;
+        lastSeenMs = nowMs;
     }
 
     size_t Device::subscriptionCount() const
