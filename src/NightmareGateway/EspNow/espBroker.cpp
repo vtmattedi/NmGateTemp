@@ -1,6 +1,7 @@
 #include "espBroker.h"
 #include "espDeviceManager.h"
 #include "Auth.h"
+#include "Reassembly.h"
 #include "NightmareGateway/NightMare/Topic.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -9,17 +10,10 @@
 #include "esp_wifi.h"
 #include "esp_timer.h"
 #include "esp_log.h"
-#include "creds.h"
 #include <string.h>
 #include <algorithm>
 #include <atomic>
 #include <vector>
-
-#ifndef NM_ESPNOW_PSK
-#error "Define NM_ESPNOW_PSK (the ESP-NOW network pre-shared key, same on every device) in include/creds.h"
-#endif
-static_assert(sizeof(NM_ESPNOW_PSK) - 1 >= NightMare::EspNowAuth::MinPskLength,
-              "NM_ESPNOW_PSK must be at least 16 characters");
 
 static const char *TAG = "espBroker";
 
@@ -27,8 +21,6 @@ static const char *TAG = "espBroker";
 // back-to-back, and each SUBSCRIBE costs an ACK and a retained replay to
 // handle, so the queue has to absorb a whole burst. ~8 KB at 32.
 #define RX_QUEUE_DEPTH 32
-#define REASSEMBLY_SLOTS 4
-#define REASSEMBLY_TIMEOUT_MS 5000
 #define SEND_TIMEOUT_MS 50
 #define BEACON_INTERVAL_MS 5000
 // Told to every client in CONNACK. A session silent for SESSION_TIMEOUT_MS is
@@ -45,8 +37,9 @@ using NightMare::FrameType;
 namespace Auth = NightMare::EspNowAuth;
 
 static const uint8_t BROADCAST_MAC[MacAddress::Length] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-static const uint8_t s_psk[] = NM_ESPNOW_PSK;
-static constexpr size_t PskLength = sizeof(s_psk) - 1; // not the terminator
+// Copied in by espBroker_init(); the caller's buffer may go away after that.
+static uint8_t s_psk[Auth::MaxPskLength];
+static size_t s_pskLength = 0;
 
 struct RxPacket
 {
@@ -57,21 +50,10 @@ struct RxPacket
     uint8_t data[NightMare::MaxPacketSizeV1];
 };
 
-struct Reassembly
-{
-    bool active = false;
-    MacAddress mac;
-    uint16_t messageId = 0;
-    uint8_t nextFrame = 0;
-    uint8_t totalFrames = 0;
-    uint64_t startedAtMs = 0;
-    std::vector<uint8_t> buffer;
-};
-
 static QueueHandle_t s_rxQueue = NULL;
 static SemaphoreHandle_t s_sendDone = NULL;
 static espDeviceManager s_devices(SESSION_TIMEOUT_MS);
-static Reassembly s_reassembly[REASSEMBLY_SLOTS];
+static ReassemblyTable s_reassembly;
 static uint16_t s_nextMessageId = 1;
 static uint64_t s_lastBeaconMs = 0;
 static bool s_beaconActive = false;
@@ -225,7 +207,7 @@ bool espBroker_sendMessage(const Device *device, const NightMare::Message &messa
 
     const size_t dataSize = NightMare::MaxFrameDataSize;
     const size_t totalFrames = (raw.size() + dataSize - 1) / dataSize;
-    if (totalFrames == 0 || totalFrames > NightMare::MaxFramesPerMessage)
+    if (totalFrames == 0 || totalFrames > UINT8_MAX) // the header's fragment fields
         return false;
 
     const uint16_t messageId = newMessageId();
@@ -303,7 +285,7 @@ static void handleAuth(const MacAddress &mac, const Frame &frame)
     Auth::HandshakeContext context = handshakeContext(*pending);
 
     uint8_t expected[Auth::ProofSize];
-    const bool proofOk = Auth::authProof(s_psk, PskLength, context, expected) &&
+    const bool proofOk = Auth::authProof(s_psk, s_pskLength, context, expected) &&
                          Auth::constantTimeEqual(expected, auth.proof, Auth::ProofSize);
     Auth::wipe(expected, sizeof(expected));
     if (!proofOk)
@@ -316,7 +298,7 @@ static void handleAuth(const MacAddress &mac, const Frame &frame)
     }
 
     uint8_t lmk[Auth::LmkSize];
-    const bool lmkOk = Auth::sessionLmk(s_psk, PskLength, context, lmk);
+    const bool lmkOk = Auth::sessionLmk(s_psk, s_pskLength, context, lmk);
     Auth::wipe(&context, sizeof(context));
     Device *device = lmkOk ? s_devices.completeHandshake(mac, nowMs()) : NULL;
     if (device == NULL)
@@ -344,76 +326,24 @@ static void handleAuth(const MacAddress &mac, const Frame &frame)
 
 // --- Session traffic ---------------------------------------------------------
 
-static Reassembly *reassemblySlotFor(const MacAddress &mac, uint16_t messageId)
-{
-    const uint64_t now = nowMs();
-
-    for (Reassembly &slot : s_reassembly)
-    {
-        if (slot.active && slot.mac == mac && slot.messageId == messageId)
-            return &slot;
-    }
-
-    for (Reassembly &slot : s_reassembly)
-    {
-        if (!slot.active || now - slot.startedAtMs > REASSEMBLY_TIMEOUT_MS)
-        {
-            slot.active = false;
-            return &slot;
-        }
-    }
-    return NULL;
-}
-
 static void handleMessageFrame(Device *device, const Frame &frame)
 {
-    // Single frame messages skip the reassembly bookkeeping entirely.
-    if (frame.header.totalFrames == 1)
+    std::vector<uint8_t> whole;
+    switch (s_reassembly.feed(device->address(), frame.header, frame.data, nowMs(), whole))
     {
-        const NightMare::Message message = NightMare::Message::fromRawData(frame.data, frame.header.length);
+    case ReassemblyTable::Result::COMPLETE:
+    {
+        const NightMare::Message message = NightMare::Message::fromRawData(whole.data(), whole.size());
         if (!message.topic.empty())
             espBroker_onMessage(device, message);
-        return;
+        break;
     }
-
-    Reassembly *slot = reassemblySlotFor(device->address(), frame.header.messageId);
-    if (slot == NULL)
-    {
-        ESP_LOGW(TAG, "No reassembly slot for message %u", frame.header.messageId);
-        return;
-    }
-
-    if (!slot->active)
-    {
-        if (frame.header.frameIndex != 0)
-            return; // joined mid-message, wait for the next one to start cleanly
-        slot->active = true;
-        slot->mac = device->address();
-        slot->messageId = frame.header.messageId;
-        slot->totalFrames = frame.header.totalFrames;
-        slot->nextFrame = 0;
-        slot->startedAtMs = nowMs();
-        slot->buffer.clear();
-    }
-
-    // Frames are consumed strictly in order; anything else drops the message.
-    if (frame.header.frameIndex != slot->nextFrame)
-    {
-        ESP_LOGW(TAG, "Out of order frame %u for message %u", frame.header.frameIndex, frame.header.messageId);
-        slot->active = false;
-        return;
-    }
-
-    slot->buffer.insert(slot->buffer.end(), frame.data, frame.data + frame.header.length);
-    slot->nextFrame++;
-
-    if (slot->nextFrame >= slot->totalFrames)
-    {
-        const NightMare::Message message = NightMare::Message::fromRawData(slot->buffer.data(), slot->buffer.size());
-        slot->active = false;
-        slot->buffer.clear();
-        if (!message.topic.empty())
-            espBroker_onMessage(device, message);
+    case ReassemblyTable::Result::DROPPED:
+        ESP_LOGW(TAG, "Session %u: fragment %u/%u of message %u dropped", device->cid(),
+                 frame.header.frameIndex + 1, frame.header.totalFrames, frame.header.messageId);
+        break;
+    case ReassemblyTable::Result::INCOMPLETE:
+        break;
     }
 }
 
@@ -445,6 +375,7 @@ static void handleSessionFrame(Device *device, const Frame &frame)
         ESP_LOGI(TAG, "Session %u (%s) disconnected", device->cid(), device->address().toString().c_str());
         const MacAddress mac = device->address();
         s_devices.endSession(mac);
+        s_reassembly.drop(mac);
         break;
     }
 
@@ -537,8 +468,10 @@ static void handlePacket(const RxPacket &packet)
         break;
 
     case espDeviceManager::Verdict::INVALID_SESSION:
-        // Stale cid (e.g. from before this gateway rebooted): the client must
-        // start a new handshake. cid 0 -- it has no valid one.
+        // This MAC holds a session here, but under another cid: the client is
+        // out of step and must start a new handshake. cid 0 -- it has no valid
+        // one. (A MAC with no session at all, e.g. after this gateway rebooted,
+        // is IGNOREd instead: no peer is added just to answer it.)
         ESP_LOGW(TAG, "%s from %s with stale cid %u (session is %u)", NightMare::frameTypeName(frame.header.type),
                  mac.toString().c_str(), frame.header.cid, admission.device->cid());
         sendError(mac, 0, frame.header.messageId, ErrorCode::INVALID_SESSION);
@@ -554,8 +487,17 @@ static void handlePacket(const RxPacket &packet)
     }
 }
 
-bool espBroker_init(void)
+bool espBroker_init(const uint8_t *psk, size_t pskLength)
 {
+    if (psk == NULL || pskLength < Auth::MinPskLength || pskLength > Auth::MaxPskLength)
+    {
+        ESP_LOGE(TAG, "ESP-NOW network key must be %u..%u bytes, got %u",
+                 (unsigned)Auth::MinPskLength, (unsigned)Auth::MaxPskLength, (unsigned)pskLength);
+        return false;
+    }
+    memcpy(s_psk, psk, pskLength);
+    s_pskLength = pskLength;
+
     // espBroker_init and espBroker_process run on the same (gateway) task.
     s_processTask = xTaskGetCurrentTaskHandle();
     s_rxQueue = xQueueCreate(RX_QUEUE_DEPTH, sizeof(RxPacket));
@@ -579,6 +521,18 @@ bool espBroker_init(void)
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_now_init failed: %s", esp_err_to_name(err));
+        return false;
+    }
+
+    // The network's own PMK, not Espressif's default; every node derives the
+    // same one from the PSK. Set before any encrypted peer exists.
+    uint8_t pmk[Auth::PmkSize];
+    const bool pmkOk = Auth::networkPmk(s_psk, s_pskLength, pmk) && esp_now_set_pmk(pmk) == ESP_OK;
+    Auth::wipe(pmk, sizeof(pmk));
+    if (!pmkOk)
+    {
+        ESP_LOGE(TAG, "Could not set the ESP-NOW PMK");
+        esp_now_deinit();
         return false;
     }
 

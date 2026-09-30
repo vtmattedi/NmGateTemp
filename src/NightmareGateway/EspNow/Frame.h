@@ -81,8 +81,8 @@ namespace NightMare
     constexpr size_t MaxPacketSizeV2 = 1470;
     constexpr size_t MaxFrameDataSize = MaxPacketSizeV1 - FrameHeaderSize;   // 240
     constexpr size_t MaxFrameDataSizeV2 = MaxPacketSizeV2 - FrameHeaderSize; // 1460
-    // What either side reassembles. The header could say 255.
-    constexpr uint8_t MaxFramesPerMessage = 16;
+    // A MESSAGE may use every fragment the uint8_t header fields allow: up to
+    // 255 frames, 255 * 240 bytes at V1.
 
     struct Frame
     {
@@ -144,7 +144,6 @@ namespace NightMare
         UNSUPPORTED_PROTOCOL, // NM protocol version other than NM_PROTOCOL_VERSION
         UNKNOWN_TYPE,
         BAD_FRAGMENT,         // totalFrames 0, frameIndex out of range, or fragments on a non-MESSAGE
-        TOO_MANY_FRAGMENTS,   // over MaxFramesPerMessage
         BAD_CID,              // cid 0 where a session is required, or the reverse
         BAD_PAYLOAD,          // wrong payload size for a fixed-size type
     };

@@ -11,6 +11,7 @@ namespace NightMare::EspNowAuth
     {
         constexpr char AuthLabel[] = "NM-AUTH";
         constexpr char LmkLabel[] = "NM-LMK";
+        constexpr char PmkLabel[] = "NM-PMK";
         constexpr size_t MaxLabelLength = 8;
         constexpr size_t Sha256Size = 32;
 
@@ -20,13 +21,32 @@ namespace NightMare::EspNowAuth
                 out[i] = static_cast<uint8_t>(value >> (8 * i));
         }
 
+        // first `outLength` bytes of HMAC-SHA256(psk, message)
+        bool hmacTruncated(const uint8_t *psk, size_t pskLength, const uint8_t *message,
+                           size_t messageLength, uint8_t *out, size_t outLength)
+        {
+            memset(out, 0, outLength);
+            if (psk == nullptr || pskLength == 0)
+                return false;
+            uint8_t digest[Sha256Size];
+            const mbedtls_md_info_t *sha256 = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+            const bool ok = sha256 != nullptr &&
+                            mbedtls_md_hmac(sha256, psk, pskLength, message, messageLength, digest) == 0;
+            if (ok)
+                memcpy(out, digest, outLength);
+            wipe(digest, sizeof(digest));
+            return ok;
+        }
+
         bool derive(const char *label, const uint8_t *psk, size_t pskLength,
                     const HandshakeContext &context, uint8_t *out, size_t outLength)
         {
-            memset(out, 0, outLength);
             const size_t labelLength = strlen(label);
-            if (psk == nullptr || pskLength == 0 || labelLength > MaxLabelLength)
+            if (labelLength > MaxLabelLength)
+            {
+                memset(out, 0, outLength);
                 return false;
+            }
 
             uint8_t message[MaxLabelLength + 2 * MacSize + 2 * 8];
             size_t used = 0;
@@ -41,13 +61,7 @@ namespace NightMare::EspNowAuth
             putLe64(message + used, context.gatewayNonce);
             used += 8;
 
-            uint8_t digest[Sha256Size];
-            const mbedtls_md_info_t *sha256 = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-            const bool ok = sha256 != nullptr &&
-                            mbedtls_md_hmac(sha256, psk, pskLength, message, used, digest) == 0;
-            if (ok)
-                memcpy(out, digest, outLength);
-            wipe(digest, sizeof(digest));
+            const bool ok = hmacTruncated(psk, pskLength, message, used, out, outLength);
             wipe(message, sizeof(message));
             return ok;
         }
@@ -63,6 +77,12 @@ namespace NightMare::EspNowAuth
                     uint8_t out[LmkSize])
     {
         return derive(LmkLabel, psk, pskLength, context, out, LmkSize);
+    }
+
+    bool networkPmk(const uint8_t *psk, size_t pskLength, uint8_t out[PmkSize])
+    {
+        return hmacTruncated(psk, pskLength, reinterpret_cast<const uint8_t *>(PmkLabel),
+                             strlen(PmkLabel), out, PmkSize);
     }
 
     bool constantTimeEqual(const uint8_t *a, const uint8_t *b, size_t length)

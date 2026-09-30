@@ -5,8 +5,11 @@
 #include "NightmareGateway/NightMare/Device.h"
 #include "esp_now.h"
 
-// Brings up ESP-NOW on the station interface. Call after wifi connect to force both onto the same channel.
-bool espBroker_init(void);
+// Brings up ESP-NOW on the station interface once the Wi-Fi radio runs. `psk`
+// is the network key (MinPskLength..MaxPskLength bytes, see Auth.h); it is
+// copied, so the caller may wipe its buffer on return. False on a bad key or
+// an ESP-NOW failure.
+bool espBroker_init(const uint8_t *psk, size_t pskLength);
 
 // Drains what the receive callback queued, ages out silent devices, and
 // broadcasts a beacon every few seconds so a device or scanner can find this

@@ -19,6 +19,7 @@
 #include "../../src/NightmareGateway/NightMare/Message.cpp"
 #include "../../src/NightmareGateway/NightMare/Device.cpp"
 #include "../../src/NightmareGateway/EspNow/espDeviceManager.cpp"
+#include "../../src/NightmareGateway/EspNow/Reassembly.cpp"
 
 using namespace NightMare;
 namespace A = NightMare::EspNowAuth;
@@ -180,7 +181,9 @@ static void test_fragment_rules(void)
     const uint8_t msg = (uint8_t)FrameType::MESSAGE;
     TEST_ASSERT_EQUAL(FrameCheck::BAD_FRAGMENT, check(msg, 5, 1, CurrentFrameVersion, 0, 0));
     TEST_ASSERT_EQUAL(FrameCheck::BAD_FRAGMENT, check(msg, 5, 1, CurrentFrameVersion, 2, 2));
-    TEST_ASSERT_EQUAL(FrameCheck::TOO_MANY_FRAGMENTS, check(msg, 5, 1, CurrentFrameVersion, 0, 17));
+    // No cap below what the header can express.
+    TEST_ASSERT_EQUAL(FrameCheck::OK, check(msg, 5, 1, CurrentFrameVersion, 254, 255));
+    TEST_ASSERT_EQUAL(FrameCheck::BAD_FRAGMENT, check(msg, 5, 1, CurrentFrameVersion, 255, 255));
     // Only MESSAGE may be fragmented.
     TEST_ASSERT_EQUAL(FrameCheck::BAD_FRAGMENT, check((uint8_t)FrameType::SUBSCRIBE, 5, 1, CurrentFrameVersion, 0, 2));
 }
@@ -303,6 +306,23 @@ static void test_auth_rejections(void)
 
     TEST_ASSERT_TRUE(A::constantTimeEqual(expected, expected, 16));
     TEST_ASSERT_FALSE(A::authProof(nullptr, 0, c, proof));
+}
+
+static void test_network_pmk(void)
+{
+    const uint8_t expected[16] = {0x5A, 0xE5, 0x2F, 0xC2, 0xEB, 0x60, 0xA0, 0x76,
+                                  0x0E, 0xD8, 0x89, 0x53, 0xC9, 0xDB, 0xB7, 0x45};
+    uint8_t pmk[16], lmk[16], proof[16];
+    TEST_ASSERT_TRUE(A::networkPmk(PSK, PSK_LEN, pmk));
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(expected, pmk, 16);
+
+    // Domain-separated from the per-session values.
+    const A::HandshakeContext c = vectorContext();
+    A::sessionLmk(PSK, PSK_LEN, c, lmk);
+    A::authProof(PSK, PSK_LEN, c, proof);
+    TEST_ASSERT_FALSE(memcmp(pmk, lmk, 16) == 0);
+    TEST_ASSERT_FALSE(memcmp(pmk, proof, 16) == 0);
+    TEST_ASSERT_FALSE(A::networkPmk(nullptr, 0, pmk));
 }
 
 static void test_nonces_are_fresh(void)
@@ -492,6 +512,83 @@ static void test_subscribers_count_connected_only(void)
     TEST_ASSERT_EQUAL(0, m.getSubscriberCount());
 }
 
+// --- Reassembly --------------------------------------------------------------
+
+static FrameHeader fragment(uint16_t cid, uint16_t messageId, uint8_t index, uint8_t total, uint16_t length)
+{
+    FrameHeader h = header(FrameType::MESSAGE, cid);
+    h.messageId = messageId;
+    h.frameIndex = index;
+    h.totalFrames = total;
+    h.length = length;
+    return h;
+}
+
+static void test_reassembly_in_order(void)
+{
+    ReassemblyTable t;
+    std::vector<uint8_t> out;
+    const uint8_t a[2] = {1, 2}, b[1] = {3};
+    TEST_ASSERT_EQUAL(ReassemblyTable::Result::INCOMPLETE, t.feed(mac(1), fragment(10, 42, 0, 2, 2), a, 0, out));
+    TEST_ASSERT_EQUAL(ReassemblyTable::Result::COMPLETE, t.feed(mac(1), fragment(10, 42, 1, 2, 1), b, 0, out));
+    const uint8_t whole[3] = {1, 2, 3};
+    TEST_ASSERT_EQUAL(3, out.size());
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(whole, out.data(), 3);
+    TEST_ASSERT_EQUAL(0, t.activeCount());
+}
+
+// cid 10 starts message #42; the device reconnects as cid 11 and sends #42
+// again. The old fragments must not be reused.
+static void test_reassembly_keyed_by_cid(void)
+{
+    ReassemblyTable t;
+    std::vector<uint8_t> out;
+    const uint8_t stale[1] = {0xEE}, fresh0[1] = {0x01}, fresh1[1] = {0x02}, fresh2[1] = {0x03};
+
+    TEST_ASSERT_EQUAL(ReassemblyTable::Result::INCOMPLETE, t.feed(mac(1), fragment(10, 42, 0, 3, 1), stale, 0, out));
+
+    // A continuation under the new cid cannot pick up the old session's slot.
+    TEST_ASSERT_EQUAL(ReassemblyTable::Result::DROPPED, t.feed(mac(1), fragment(11, 42, 1, 3, 1), fresh1, 1, out));
+
+    // The new message starts cleanly and completes with only its own bytes.
+    TEST_ASSERT_EQUAL(ReassemblyTable::Result::INCOMPLETE, t.feed(mac(1), fragment(11, 42, 0, 3, 1), fresh0, 2, out));
+    TEST_ASSERT_EQUAL(ReassemblyTable::Result::INCOMPLETE, t.feed(mac(1), fragment(11, 42, 1, 3, 1), fresh1, 3, out));
+    TEST_ASSERT_EQUAL(ReassemblyTable::Result::COMPLETE, t.feed(mac(1), fragment(11, 42, 2, 3, 1), fresh2, 4, out));
+    const uint8_t whole[3] = {0x01, 0x02, 0x03};
+    TEST_ASSERT_EQUAL(3, out.size());
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(whole, out.data(), 3);
+    // The old session's leftover was reclaimed, not kept alongside.
+    TEST_ASSERT_EQUAL(0, t.activeCount());
+}
+
+static void test_reassembly_other_sender_isolated(void)
+{
+    ReassemblyTable t;
+    std::vector<uint8_t> out;
+    const uint8_t x[1] = {9};
+    t.feed(mac(1), fragment(10, 42, 0, 2, 1), x, 0, out);
+    // Same cid and messageId from another MAC is a different message.
+    TEST_ASSERT_EQUAL(ReassemblyTable::Result::DROPPED, t.feed(mac(2), fragment(10, 42, 1, 2, 1), x, 0, out));
+    TEST_ASSERT_EQUAL(1, t.activeCount());
+}
+
+static void test_reassembly_out_of_order_and_timeout(void)
+{
+    ReassemblyTable t;
+    std::vector<uint8_t> out;
+    const uint8_t x[1] = {9};
+    t.feed(mac(1), fragment(10, 1, 0, 3, 1), x, 0, out);
+    TEST_ASSERT_EQUAL(ReassemblyTable::Result::DROPPED, t.feed(mac(1), fragment(10, 1, 2, 3, 1), x, 0, out));
+    TEST_ASSERT_EQUAL(0, t.activeCount());
+
+    // Every slot busy: a fifth message is dropped until one times out.
+    for (uint16_t id = 1; id <= ReassemblyTable::Slots; id++)
+        t.feed(mac(1), fragment(10, id, 0, 2, 1), x, 0, out);
+    TEST_ASSERT_EQUAL(ReassemblyTable::Result::DROPPED, t.feed(mac(1), fragment(10, 99, 0, 2, 1), x, 0, out));
+    TEST_ASSERT_EQUAL(ReassemblyTable::Result::INCOMPLETE,
+                      t.feed(mac(1), fragment(10, 99, 0, 2, 1), x, ReassemblyTable::TimeoutMs + 1, out));
+}
+
 extern "C" void app_main(void)
 {
     UNITY_BEGIN();
@@ -508,6 +605,7 @@ extern "C" void app_main(void)
     RUN_TEST(test_proof_and_lmk_differ);
     RUN_TEST(test_every_input_changes_the_result);
     RUN_TEST(test_auth_rejections);
+    RUN_TEST(test_network_pmk);
     RUN_TEST(test_nonces_are_fresh);
     RUN_TEST(test_unknown_sender_creates_nothing);
     RUN_TEST(test_cid_only_after_auth);
@@ -522,5 +620,9 @@ extern "C" void app_main(void)
     RUN_TEST(test_stuck_securing_ends_without_will);
     RUN_TEST(test_silent_session_fires_will);
     RUN_TEST(test_subscribers_count_connected_only);
+    RUN_TEST(test_reassembly_in_order);
+    RUN_TEST(test_reassembly_keyed_by_cid);
+    RUN_TEST(test_reassembly_other_sender_isolated);
+    RUN_TEST(test_reassembly_out_of_order_and_timeout);
     UNITY_END();
 }

@@ -91,7 +91,6 @@ namespace NightMare
         case FrameCheck::UNSUPPORTED_PROTOCOL: return "unsupported NM protocol version";
         case FrameCheck::UNKNOWN_TYPE: return "unknown frame type";
         case FrameCheck::BAD_FRAGMENT: return "bad fragment fields";
-        case FrameCheck::TOO_MANY_FRAGMENTS: return "too many fragments";
         case FrameCheck::BAD_CID: return "cid not valid for this frame type";
         case FrameCheck::BAD_PAYLOAD: return "wrong payload size";
         }
@@ -121,8 +120,6 @@ namespace NightMare
             return FrameCheck::BAD_FRAGMENT;
         if (type != FrameType::MESSAGE && header.totalFrames != 1)
             return FrameCheck::BAD_FRAGMENT;
-        if (header.totalFrames > MaxFramesPerMessage)
-            return FrameCheck::TOO_MANY_FRAGMENTS;
 
         const CidRule rule = cidRule(type);
         if ((rule == CidRule::ZERO && header.cid != 0) ||

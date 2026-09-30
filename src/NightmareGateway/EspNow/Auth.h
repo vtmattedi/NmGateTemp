@@ -5,21 +5,25 @@
 // NightMare ESP-NOW session authentication. Shared byte for byte by the gateway
 // and the NightMareNetwork client.
 //
-// Both values are HMAC-SHA256 keyed with the network PSK, truncated to 16 bytes,
-// over
+// Every value is HMAC-SHA256 keyed with the network PSK, truncated to 16 bytes.
+// Per session, over
 //     label | clientMac(6) | gatewayMac(6) | clientNonce(8, LE) | gatewayNonce(8, LE)
 // with label "NM-AUTH" for the proof sent in AUTH and "NM-LMK" for the ESP-NOW
-// peer key. The labels keep the two apart: the proof is on the wire, the LMK
-// never is. Each MAC is the one ESP-NOW reports as the sender, never a value a
-// frame claims.
+// peer key. Per network, over the label "NM-PMK" alone, for the ESP-NOW primary
+// key (esp_now_set_pmk) instead of Espressif's default. The labels keep the
+// three apart: the proof is on the wire, the keys never are. Each MAC is the
+// one ESP-NOW reports as the sender, never a value a frame claims.
 
 namespace NightMare::EspNowAuth
 {
     constexpr size_t MacSize = 6;
     constexpr size_t ProofSize = 16;
     constexpr size_t LmkSize = 16;
-    // A shorter PSK is refused by both ends at compile time.
+    constexpr size_t PmkSize = 16;
+    // Both ends refuse a PSK outside these bounds. 64 is the HMAC-SHA256 block:
+    // a longer key would only be hashed down first.
     constexpr size_t MinPskLength = 16;
+    constexpr size_t MaxPskLength = 64;
 
     struct HandshakeContext
     {
@@ -34,6 +38,8 @@ namespace NightMare::EspNowAuth
                    uint8_t out[ProofSize]);
     bool sessionLmk(const uint8_t *psk, size_t pskLength, const HandshakeContext &context,
                     uint8_t out[LmkSize]);
+    // Same on every node of the network; set once, right after esp_now_init().
+    bool networkPmk(const uint8_t *psk, size_t pskLength, uint8_t out[PmkSize]);
 
     // Timing does not depend on where the inputs differ.
     bool constantTimeEqual(const uint8_t *a, const uint8_t *b, size_t length);

@@ -5,6 +5,7 @@
 #include "NightmareGateway/EspNow/espBroker.h"
 #include "NightmareGateway/NightMare/Message.h"
 #include "NightmareGateway/NightMare/Time.h"
+#include "NightmareGateway/EspNow/Auth.h"
 #include "freertos/queue.h"
 #include <strings.h>
 #include "esp_timer.h"
@@ -31,6 +32,13 @@ enum class GatewayState
 static QueueHandle_t s_inbound = NULL; // NightMare::Message* from the MQTT task
 static NightMare::MessageVault s_vault;
 static bool s_mqttStarted = false;
+
+// What start_nightmare_gateway() kept from its config. The PSK copy only lives
+// until the gateway task hands it to espBroker_init(), which keeps its own.
+static bool s_espnowEnabled = true;
+static bool s_mqttEnabled = true;
+static uint8_t s_pendingPsk[NightMare::EspNowAuth::MaxPskLength];
+static size_t s_pendingPskLength = 0;
 
 // Keeps a copy of anything flagged persistent so a device that subscribes later
 // still gets the last value, the way a broker would replay retained messages.
@@ -265,17 +273,19 @@ void gateway_task(void *pvParameters)
             // ESP-NOW only needs the radio running, so it comes up before (and
             // independently of) any association with an access point.
             if (wifi_is_started())
-                state = GatewayState::StartEspNow;
+                state = s_espnowEnabled ? GatewayState::StartEspNow : GatewayState::Running;
             break;
 
         case GatewayState::StartEspNow:
-            if (!espBroker_init())
-                ESP_LOGE(TAG, "ESP-NOW unavailable, running MQTT only");
+            if (!espBroker_init(s_pendingPsk, s_pendingPskLength))
+                ESP_LOGE(TAG, "ESP-NOW unavailable%s", s_mqttEnabled ? ", running MQTT only" : "");
+            NightMare::EspNowAuth::wipe(s_pendingPsk, sizeof(s_pendingPsk));
+            s_pendingPskLength = 0;
             state = GatewayState::Running;
             break;
 
         case GatewayState::Running:
-            if (!s_mqttStarted && wifi_is_connected())
+            if (s_mqttEnabled && !s_mqttStarted && wifi_is_connected())
             {
                 ESP_LOGI(TAG, "Network up, starting MQTT");
                 mqtt_init();
@@ -295,8 +305,26 @@ void gateway_task(void *pvParameters)
     }
 }
 
-BaseType_t start_nightmare_gateway(void)
+BaseType_t start_nightmare_gateway(const NightMareGatewayConfig &config)
 {
+    // mqttBroker is not implemented; the flag is ignored.
+    s_espnowEnabled = config.espnowBroker;
+    s_mqttEnabled = config.mqttClient;
+    if (s_espnowEnabled)
+    {
+        const NightMareEspNowConfig &espnow = config.espnowConfig;
+        if (espnow.psk == NULL || espnow.pskLength < NightMare::EspNowAuth::MinPskLength ||
+            espnow.pskLength > NightMare::EspNowAuth::MaxPskLength)
+        {
+            ESP_LOGE(TAG, "ESP-NOW needs a %u..%u byte network key, got %u",
+                     (unsigned)NightMare::EspNowAuth::MinPskLength,
+                     (unsigned)NightMare::EspNowAuth::MaxPskLength, (unsigned)espnow.pskLength);
+            return pdFAIL;
+        }
+        memcpy(s_pendingPsk, espnow.psk, espnow.pskLength);
+        s_pendingPskLength = espnow.pskLength;
+    }
+
     s_inbound = xQueueCreate(INBOUND_QUEUE_DEPTH, sizeof(NightMare::Message *));
     if (s_inbound == NULL)
     {

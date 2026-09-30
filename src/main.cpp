@@ -11,7 +11,24 @@
 #include "driver/uart.h"
 #include "esp_timer.h"
 #include "esp_log.h"
+#include "creds.h"
+
+#ifndef NM_ESPNOW_PSK
+#error "Define NM_ESPNOW_PSK (the ESP-NOW network key, same on every device) in include/creds.h"
+#endif
+
 void loop();
+
+// The application owns where the gateway's configuration comes from; today
+// that is creds.h. The gateway copies what it needs.
+static NightMareGatewayConfig gatewayConfig()
+{
+    static const uint8_t psk[] = NM_ESPNOW_PSK;
+    NightMareGatewayConfig config;
+    config.espnowConfig.psk = psk;
+    config.espnowConfig.pskLength = sizeof(psk) - 1; // not the terminator
+    return config;
+}
 
 void initSequence()
 {
@@ -141,7 +158,8 @@ extern "C" void app_main(void)
     uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
 
     initSequence();
-    start_nightmare_gateway();
+    if (start_nightmare_gateway(gatewayConfig()) != pdPASS)
+        ESP_LOGE("main", "Gateway did not start: check its configuration");
     wifi_init_sta();
     ntp_sync_start();
     gpio_reset_pin(BLINK_GPIO);
