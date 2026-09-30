@@ -3,4 +3,7 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
-lib/creds.h
+include/creds.h
+include/brokerCreds.h
+.claude
+tester/

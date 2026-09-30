@@ -3266,8 +3266,7 @@ CONFIG_MBEDTLS_FS_IO=y
 #
 # default:
 CONFIG_MQTT_PROTOCOL_311=y
-# default:
-# CONFIG_MQTT_PROTOCOL_5 is not set
+CONFIG_MQTT_PROTOCOL_5=y
 # default:
 CONFIG_MQTT_TRANSPORT_SSL=y
 # default:
