@@ -30,6 +30,15 @@ namespace NightMare
         MacAddress mac;
         uint16_t cid_ = 0;
         ConnectionState state_ = ConnectionState::AUTHENTICATED;
+        // The session's ESP-NOW key. Kept because a handshake from this MAC
+        // turns the peer back to plaintext, and an unproven one has to leave
+        // the session exactly as it was -- encryption included.
+        uint8_t sessionKey_[16] = {};
+        bool hasSessionKey_ = false;
+        // A handshake is running for this MAC. The peer is plaintext meanwhile,
+        // so nothing is delivered to the session and nothing is accepted from
+        // it, until the handshake either proves itself or is abandoned.
+        bool suspended_ = false;
         uint8_t rssi = 0;
         uint64_t lastSeenMs = 0;                     // last accepted frame (or session start)
         std::string subscriptions[MaxSubscriptions]; // list of topics this device is subscribed to
@@ -47,7 +56,18 @@ namespace NightMare
         uint16_t cid() const { return cid_; }
         ConnectionState state() const { return state_; }
         void setState(ConnectionState state) { state_ = state; }
-        bool isConnected() const { return state_ == ConnectionState::CONNECTED; }
+        // Usable right now: secured, and not paused by a handshake.
+        bool isConnected() const { return state_ == ConnectionState::CONNECTED && !suspended_; }
+
+        static constexpr size_t SessionKeySize = sizeof(sessionKey_);
+        void setSessionKey(const uint8_t *key);
+        const uint8_t *sessionKey() const { return sessionKey_; }
+        bool hasSessionKey() const { return hasSessionKey_; }
+        void forgetSessionKey();
+
+        bool isSuspended() const { return suspended_; }
+        void suspend() { suspended_ = true; }
+        void resume() { suspended_ = false; }
 
         uint64_t lastSeenAtMs() const { return lastSeenMs; }
         void markSeen(uint8_t signal, uint64_t nowMs);

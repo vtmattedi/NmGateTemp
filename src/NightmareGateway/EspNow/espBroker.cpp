@@ -440,10 +440,10 @@ static void handlePacket(const RxPacket &packet)
     if (check != FrameCheck::OK)
     {
         s_invalidFrames++;
-        // Only a sender with a session is worth answering; anyone else could
-        // be an old-protocol device or noise.
+        // Only a sender with a live session is worth answering; anyone else
+        // could be an old-protocol device, noise, or an unproven handshake.
         const Device *device = s_devices.sessionFor(mac);
-        if (device != NULL)
+        if (device != NULL && !device->isSuspended())
         {
             ESP_LOGW(TAG, "Invalid frame from session %u: %s", device->cid(), NightMare::frameCheckName(check));
             const bool version = check == FrameCheck::UNSUPPORTED_FRAMING || check == FrameCheck::UNSUPPORTED_PROTOCOL;

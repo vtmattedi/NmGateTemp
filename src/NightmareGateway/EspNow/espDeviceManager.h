@@ -44,7 +44,7 @@ public:
     {
         HANDSHAKE,       // CONNECT, or AUTH from a sender with a pending handshake
         SESSION,         // right MAC, right cid, allowed in the session's state
-        IGNORE,          // unknown sender or a frame it may not send: drop silently
+        IGNORE,          // unknown sender, a suspended session, or a frame it may not send
         INVALID_SESSION, // known MAC, wrong cid: tell it to start over
         NOT_CONNECTED,   // right cid, but the session has not finished securing
     };
@@ -61,18 +61,23 @@ public:
     // Which path a validated frame from `mac` takes. Never creates anything.
     Admission admit(const MacAddress &mac, const NightMare::FrameHeader &header);
 
-    // CONNECT. A session this MAC already had ends here, without its last
-    // will: the device is reconnecting, not gone. A repeated CONNECT replaces
-    // the pending entry. Null when the pending table is full of live entries
-    // or the peer could not be added.
+    // CONNECT. Nothing here is proven yet, so an existing session for this MAC
+    // is kept: it is only suspended, because the handshake needs the peer in
+    // plaintext. A repeated CONNECT replaces the pending entry. Null when the
+    // pending table is full of live entries or the peer could not be turned to
+    // plaintext -- and then any existing session is left untouched.
     PendingHandshake *beginHandshake(const MacAddress &mac, uint64_t clientNonce, uint16_t capabilities,
                                      uint64_t gatewayNonce, uint64_t nowMs);
     PendingHandshake *pendingFor(const MacAddress &mac);
-    // Failed or expired: forgets the nonces and the peer.
+    // Failed or expired: forgets the nonces, and puts a suspended session back
+    // exactly as it was, encryption included. Without one, forgets the peer.
     void abandonHandshake(const MacAddress &mac);
-    // AUTH verified. Consumes the pending entry (nonces wiped) and creates an
-    // AUTHENTICATED session with a fresh non-zero cid. Null (handshake
-    // abandoned) when the session table is full.
+    // AUTH verified -- the only thing that may replace a session. Consumes the
+    // pending entry (nonces wiped), drops any previous session for this MAC
+    // without firing its last will, and creates an AUTHENTICATED session with
+    // a fresh non-zero cid. Null (handshake abandoned) when the session table
+    // is full; replacing a session never needs room, so a reconnecting device
+    // always gets back in.
     NightMare::Device *completeHandshake(const MacAddress &mac, uint64_t nowMs);
     // Installs the LMK and moves to SECURING. False (session ended) if the
     // peer could not be encrypted.
@@ -95,6 +100,8 @@ public:
 private:
     uint16_t allocateCid();
     void removePeer(const MacAddress &mac);
+    // keepPeer: the caller is about to reuse the peer for a new session.
+    void eraseSession(const MacAddress &mac, bool keepPeer);
 
     std::vector<NightMare::Device> devices;
     PendingHandshake pending[MaxPending];

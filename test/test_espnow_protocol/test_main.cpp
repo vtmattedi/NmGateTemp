@@ -111,10 +111,12 @@ static espDeviceManager manager(uint16_t firstCid = 1)
     return m;
 }
 
-// Runs CONNECT..secure for `who`, leaving a CONNECTED session.
-static Device *connect(espDeviceManager &m, const MacAddress &who, uint64_t now = 0)
+// Runs CONNECT..secure for `who`, leaving a CONNECTED session. `keyByte`
+// fills its session LMK, so a test can tell one session's key from another's.
+static Device *connect(espDeviceManager &m, const MacAddress &who, uint64_t now = 0, uint8_t keyByte = 1)
 {
-    const uint8_t lmk[16] = {1};
+    uint8_t lmk[16];
+    memset(lmk, keyByte, sizeof(lmk));
     if (m.beginHandshake(who, 1, 0, 2, now) == nullptr)
         return nullptr;
     Device *d = m.completeHandshake(who, now);
@@ -411,17 +413,131 @@ static void test_connected_mac_and_cid(void)
     TEST_ASSERT_EQUAL(espDeviceManager::Verdict::IGNORE, m.admit(mac(1), header(FrameType::CONNACK, cid)).verdict);
 }
 
-static void test_reconnect_gets_new_cid(void)
+// A CONNECT proves nothing, so it must not cost the session anything: it only
+// pauses while the peer is plaintext for the handshake.
+static void test_connect_only_suspends_the_session(void)
 {
     espDeviceManager m = manager();
-    const uint16_t first = connect(m, mac(1))->cid();
-    // A new CONNECT from the same MAC ends the old session (no last will).
-    m.beginHandshake(mac(1), 3, 0, 4, 10);
-    TEST_ASSERT_NULL(m.sessionFor(mac(1)));
+    Device *d = connect(m, mac(1));
+    const uint16_t cid = d->cid();
+    d->subscribeTo("a/#");
+
+    TEST_ASSERT_NOT_NULL(m.beginHandshake(mac(1), 3, 0, 4, 10));
+    Device *same = m.sessionFor(mac(1));
+    TEST_ASSERT_NOT_NULL(same);              // still there
+    TEST_ASSERT_EQUAL(cid, same->cid());     // same session
+    TEST_ASSERT_EQUAL(1, same->subscriptionCount());
+    TEST_ASSERT_TRUE(same->isSuspended());
     TEST_ASSERT_EQUAL(0, s_lost);
-    TEST_ASSERT_EQUAL(espDeviceManager::Verdict::IGNORE, m.admit(mac(1), header(FrameType::MESSAGE, first)).verdict);
-    Device *d = m.completeHandshake(mac(1), 10);
-    TEST_ASSERT_NOT_EQUAL(first, d->cid());
+
+    // Paused: nothing is delivered to it, nothing is accepted from it, and the
+    // silence is answered with silence -- not an error that would make the real
+    // device tear down a session it is about to get back.
+    TEST_ASSERT_FALSE(same->isConnected());
+    TEST_ASSERT_EQUAL(0, m.getSubscriberCount());
+    TEST_ASSERT_EQUAL(espDeviceManager::Verdict::IGNORE, m.admit(mac(1), header(FrameType::MESSAGE, cid)).verdict);
+    TEST_ASSERT_EQUAL(espDeviceManager::Verdict::IGNORE, m.admit(mac(1), header(FrameType::PING, cid)).verdict);
+}
+
+static void test_unproven_handshake_restores_the_session(void)
+{
+    espDeviceManager m = manager();
+    Device *d = connect(m, mac(1), 0, 0xAB);
+    const uint16_t cid = d->cid();
+    d->subscribeTo("a/#");
+    const int securedBefore = s_peersSecured;
+
+    m.beginHandshake(mac(1), 3, 0, 4, 10);
+    m.abandonHandshake(mac(1)); // AUTH failed, or never came
+
+    Device *same = m.sessionFor(mac(1));
+    TEST_ASSERT_NOT_NULL(same);
+    TEST_ASSERT_EQUAL(cid, same->cid());
+    TEST_ASSERT_EQUAL(1, same->subscriptionCount());
+    TEST_ASSERT_FALSE(same->isSuspended());
+    TEST_ASSERT_TRUE(same->isConnected());
+    TEST_ASSERT_EQUAL(1, m.getSubscriberCount());
+    TEST_ASSERT_EQUAL(0, s_peersRemoved); // the peer was never dropped
+    // Encryption is back, with that session's own key.
+    TEST_ASSERT_EQUAL(securedBefore + 1, s_peersSecured);
+    uint8_t expected[16];
+    memset(expected, 0xAB, sizeof(expected));
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(expected, s_lastLmk, 16);
+    // And it works again.
+    TEST_ASSERT_EQUAL(espDeviceManager::Verdict::SESSION, m.admit(mac(1), header(FrameType::MESSAGE, cid)).verdict);
+}
+
+static void test_handshake_timeout_restores_the_session(void)
+{
+    espDeviceManager m = manager();
+    const uint16_t cid = connect(m, mac(1))->cid();
+    m.beginHandshake(mac(1), 3, 0, 4, 1000);
+    TEST_ASSERT_TRUE(m.sessionFor(mac(1))->isSuspended());
+
+    m.expire(1001 + espDeviceManager::HandshakeTimeoutMs, onLost);
+    TEST_ASSERT_EQUAL(0, m.pendingCount());
+    Device *same = m.sessionFor(mac(1));
+    TEST_ASSERT_NOT_NULL(same);
+    TEST_ASSERT_EQUAL(cid, same->cid());
+    TEST_ASSERT_FALSE(same->isSuspended());
+    TEST_ASSERT_EQUAL(0, s_lost);
+}
+
+// Silence while paused means nothing: the device cannot answer a peer it has
+// no key for, so only the handshake timeout may decide its fate.
+static void test_suspended_session_does_not_time_out(void)
+{
+    espDeviceManager m = manager();
+    connect(m, mac(1), 0);
+    m.beginHandshake(mac(1), 3, 0, 4, 0);
+    m.expire(60001, onLost);
+    TEST_ASSERT_EQUAL(1, m.getDeviceCount());
+    TEST_ASSERT_EQUAL(0, s_lost);
+}
+
+// Only a verified AUTH replaces a session.
+static void test_verified_auth_replaces_the_session(void)
+{
+    espDeviceManager m = manager();
+    Device *d = connect(m, mac(1));
+    const uint16_t first = d->cid();
+    d->subscribeTo("a/#");
+    Message will;
+    will.topic = "dev/status";
+    d->setLastWill(will);
+
+    m.beginHandshake(mac(1), 3, 0, 4, 10);
+    Device *fresh = m.completeHandshake(mac(1), 10);
+    TEST_ASSERT_NOT_NULL(fresh);
+    TEST_ASSERT_NOT_EQUAL(first, fresh->cid());
+    TEST_ASSERT_EQUAL(1, m.getDeviceCount());       // replaced, not added
+    TEST_ASSERT_EQUAL(0, fresh->subscriptionCount()); // the client resyncs
+    TEST_ASSERT_FALSE(fresh->hasLastWill());
+    TEST_ASSERT_EQUAL(0, s_lost);                   // reconnecting, not gone
+    TEST_ASSERT_EQUAL(0, s_peersRemoved);           // the peer carries over
+    // The old cid is finished with.
+    TEST_ASSERT_EQUAL(espDeviceManager::Verdict::INVALID_SESSION,
+                      m.admit(mac(1), header(FrameType::MESSAGE, first)).verdict);
+}
+
+// Replacing takes no new room, so a device can always reconnect.
+static void test_replacement_works_with_a_full_table(void)
+{
+    espDeviceManager m = manager();
+    for (uint8_t i = 1; i <= espDeviceManager::MaxDevices; i++)
+        TEST_ASSERT_NOT_NULL(connect(m, mac(i)));
+    TEST_ASSERT_EQUAL(espDeviceManager::MaxDevices, m.getDeviceCount());
+
+    // A newcomer is refused...
+    TEST_ASSERT_NOT_NULL(m.beginHandshake(mac(99), 1, 0, 1, 10));
+    TEST_ASSERT_NULL(m.completeHandshake(mac(99), 10));
+    // ...but one of the sixteen can still come back.
+    const uint16_t old = m.sessionFor(mac(3))->cid();
+    TEST_ASSERT_NOT_NULL(m.beginHandshake(mac(3), 1, 0, 1, 20));
+    Device *fresh = m.completeHandshake(mac(3), 20);
+    TEST_ASSERT_NOT_NULL(fresh);
+    TEST_ASSERT_NOT_EQUAL(old, fresh->cid());
+    TEST_ASSERT_EQUAL(espDeviceManager::MaxDevices, m.getDeviceCount());
 }
 
 static void test_gateway_reboot_invalidates_cids(void)
@@ -612,7 +728,12 @@ extern "C" void app_main(void)
     RUN_TEST(test_securing_gate);
     RUN_TEST(test_failed_encryption_is_not_connected);
     RUN_TEST(test_connected_mac_and_cid);
-    RUN_TEST(test_reconnect_gets_new_cid);
+    RUN_TEST(test_connect_only_suspends_the_session);
+    RUN_TEST(test_unproven_handshake_restores_the_session);
+    RUN_TEST(test_handshake_timeout_restores_the_session);
+    RUN_TEST(test_suspended_session_does_not_time_out);
+    RUN_TEST(test_verified_auth_replaces_the_session);
+    RUN_TEST(test_replacement_works_with_a_full_table);
     RUN_TEST(test_gateway_reboot_invalidates_cids);
     RUN_TEST(test_cids_unique_nonzero_and_wrap);
     RUN_TEST(test_pending_timeout_frees_state);

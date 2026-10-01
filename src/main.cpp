@@ -12,6 +12,8 @@
 #include "esp_timer.h"
 #include "esp_log.h"
 #include "creds.h"
+#include "driver/temperature_sensor.h"
+#include "esp_system.h"
 
 #ifndef NM_ESPNOW_PSK
 #error "Define NM_ESPNOW_PSK (the ESP-NOW network key, same on every device) in include/creds.h"
@@ -88,25 +90,89 @@ static void printStatus(void)
              (unsigned)espBroker_subscriberCount(), espBroker_beaconActive() ? "active" : "inactive", beaconAge);
 }
 
-static void handleSerialLine(const char *line)
+// --- Serial commands ---------------------------------------------------------
+// One line = "<command> [args]". To add one: write a handler taking the
+// (already trimmed, possibly empty) argument string and add a row below.
+
+bool chipTempRead(float &temperatureC);
+static bool s_tempLogEnabled = true; // the once-a-second chip temperature log in app_main
+
+static void cmdHelp(const char *args);
+
+static void cmdStatus(const char *) { printStatus(); }
+static void cmdDevices(const char *) { printDeviceList(); }
+
+static void cmdHeap(const char *)
 {
-    if (strcmp(line, "reboot") == 0)
+    ESP_LOGI("Serial", "heap free=%lu min=%lu bytes", (unsigned long)esp_get_free_heap_size(),
+             (unsigned long)esp_get_minimum_free_heap_size());
+}
+
+static void cmdTemp(const char *args)
+{
+    if (strcmp(args, "on") == 0 || strcmp(args, "off") == 0)
     {
-        ESP_LOGI("Serial", "Rebooting...");
-        esp_restart();
+        s_tempLogEnabled = strcmp(args, "on") == 0;
+        ESP_LOGI("Serial", "temperature log %s", s_tempLogEnabled ? "on" : "off");
+        return;
     }
-    else if (strcmp(line, "devices") == 0)
-    {
-        printDeviceList();
-    }
-    else if (strcmp(line, "status") == 0)
-    {
-        printStatus();
-    }
+    float tempC;
+    if (chipTempRead(tempC))
+        ESP_LOGI("Serial", "chip temperature %.1f C", tempC);
     else
+        ESP_LOGW("Serial", "chip temperature unavailable");
+}
+
+static void cmdReboot(const char *)
+{
+    ESP_LOGI("Serial", "Rebooting...");
+    esp_restart();
+}
+
+struct SerialCommand
+{
+    const char *name;
+    const char *help;
+    void (*run)(const char *args);
+};
+
+static const SerialCommand s_commands[] = {
+    {"help", "list commands", cmdHelp},
+    {"status", "wifi, mqtt, subscribers, beacon", cmdStatus},
+    {"devices", "ESP-NOW sessions", cmdDevices},
+    {"heap", "free / minimum free heap", cmdHeap},
+    {"temp", "chip temperature now; 'temp on|off' toggles the periodic log", cmdTemp},
+    {"reboot", "restart the gateway", cmdReboot},
+};
+
+static void cmdHelp(const char *)
+{
+    for (const SerialCommand &command : s_commands)
+        ESP_LOGI("Serial", "  %-8s %s", command.name, command.help);
+}
+
+// `line` is trimmed and non-empty; it is split in place into name + args.
+static void handleSerialLine(char *line)
+{
+    char *args = line;
+    while (*args != '\0' && *args != ' ' && *args != '\t')
+        args++;
+    if (*args != '\0')
     {
-        ESP_LOGW("Serial", "Unknown command: %s", line);
+        *args++ = '\0';
+        while (*args == ' ' || *args == '\t')
+            args++;
     }
+
+    for (const SerialCommand &command : s_commands)
+    {
+        if (strcmp(line, command.name) == 0)
+        {
+            command.run(args);
+            return;
+        }
+    }
+    ESP_LOGW("Serial", "Unknown command: %s (try 'help')", line);
 }
 
 // Non-blocking: uart_read_bytes with a 0 tick timeout returns immediately with
@@ -149,6 +215,75 @@ static void pumpSerial(void)
     }
 }
 
+static const char *TEMPTAG = "chip_temp";
+
+static temperature_sensor_handle_t s_tempSensor = nullptr;
+
+bool chipTempInit()
+{
+    temperature_sensor_config_t config =
+        TEMPERATURE_SENSOR_CONFIG_DEFAULT(10, 90);
+
+    esp_err_t err =
+        temperature_sensor_install(&config, &s_tempSensor);
+
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TEMPTAG, "temperature_sensor_install failed: %s",
+                 esp_err_to_name(err));
+        return false;
+    }
+
+    err = temperature_sensor_enable(s_tempSensor);
+
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TEMPTAG, "temperature_sensor_enable failed: %s",
+                 esp_err_to_name(err));
+
+        temperature_sensor_uninstall(s_tempSensor);
+        s_tempSensor = nullptr;
+        return false;
+    }
+
+    return true;
+}
+
+bool chipTempRead(float &temperatureC)
+{
+    if (s_tempSensor == nullptr)
+        return false;
+
+    esp_err_t err =
+        temperature_sensor_get_celsius(
+            s_tempSensor,
+            &temperatureC);
+
+    if (err != ESP_OK)
+    {
+        ESP_LOGW(TEMPTAG, "temperature read failed: %s",
+                 esp_err_to_name(err));
+        return false;
+    }
+
+    return true;
+}
+
+void chipTempDeinit()
+{
+    if (s_tempSensor == nullptr)
+        return;
+
+    temperature_sensor_disable(s_tempSensor);
+    temperature_sensor_uninstall(s_tempSensor);
+    s_tempSensor = nullptr;
+}
+
+uint64_t millis()
+{
+    return static_cast<uint64_t>(esp_timer_get_time() / 1000);
+}
+
 extern "C" void app_main(void)
 {
     printf("Hello world\n");
@@ -157,16 +292,16 @@ extern "C" void app_main(void)
     // stdout keeps working over the same UART either way.
     uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0);
 
-    initSequence();
+    ws2812_init();
     if (start_nightmare_gateway(gatewayConfig()) != pdPASS)
         ESP_LOGE("main", "Gateway did not start: check its configuration");
     wifi_init_sta();
     ntp_sync_start();
-    gpio_reset_pin(BLINK_GPIO);
-    gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
-    gpio_reset_pin(BLINK_GPIO2);
-    gpio_set_direction(BLINK_GPIO2, GPIO_MODE_OUTPUT);
-    gpio_set_level(BLINK_GPIO2, 0); // Turn LED ON
+    bool tempOk = chipTempInit();
+    if (!tempOk)
+        ESP_LOGE(TEMPTAG, "Failed to initialize chip temperature sensor");
+
+    int lastTempLog = 0;
     while (1)
     {
         loop(); // big ol' arduino loop. just better for reasoning about the code.
@@ -175,11 +310,24 @@ extern "C" void app_main(void)
         // control straight back with nothing else at this priority to run,
         // starving IDLE0 and tripping its watchdog. 10ms is still well under
         // human typing speed.
-        vTaskDelay(100 ); //very small delay
+
+        if (millis() - lastTempLog >= 1000) // Log every 1000 ticks (1 second)
+        {
+            lastTempLog = millis();
+            float tempC;
+            if (!s_tempLogEnabled)
+                ; // silenced with 'temp off'
+            else if (tempOk && chipTempRead(tempC))
+                ESP_LOGI(TEMPTAG, "Chip temperature: %.1f C", tempC);
+            else if (tempOk)
+                ESP_LOGW(TEMPTAG, "Failed to read chip temperature");
+        }
+        vTaskDelay(100); // very small delay
     }
 }
 
 void loop()
 {
     pumpSerial();
+    
 }

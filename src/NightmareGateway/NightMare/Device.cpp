@@ -64,6 +64,20 @@ namespace NightMare
         return false;
     }
 
+    void Device::setSessionKey(const uint8_t *key)
+    {
+        memcpy(sessionKey_, key, sizeof(sessionKey_));
+        hasSessionKey_ = true;
+    }
+
+    void Device::forgetSessionKey()
+    {
+        volatile uint8_t *bytes = sessionKey_;
+        for (size_t i = 0; i < sizeof(sessionKey_); i++)
+            bytes[i] = 0;
+        hasSessionKey_ = false;
+    }
+
     void Device::markSeen(uint8_t signal, uint64_t nowMs)
     {
         rssi = signal;
