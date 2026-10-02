@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NightMare Gateway</title>
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" type="image/svg+xml" href="/nightmare_logo.svg">
+
+  <!-- Fonts and charts come from CDNs; the page still works (with system fonts and no graphs) without them. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="glow" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <img src="/nightmare_logo.svg" alt="" class="logo">
+      <div>
+        <h1>NightMare <span>Gateway</span></h1>
+        <p class="sub" id="gw-sub">connecting…</p>
+      </div>
+    </div>
+
+    <div class="pills" id="pills">
+      <span class="pill" id="pill-wifi"><i></i><b>Wi-Fi</b><em>—</em></span>
+      <span class="pill" id="pill-mqtt"><i></i><b>MQTT</b><em>—</em></span>
+      <span class="pill" id="pill-espnow"><i></i><b>ESP-NOW</b><em>—</em></span>
+    </div>
+
+    <div class="live" id="live"><i></i><span>offline</span></div>
+  </header>
+
+  <div class="banner" id="banner" hidden>
+    Lost contact with the gateway — retrying. Showing the last data received.
+  </div>
+
+  <main>
+    <!-- KPIs -->
+    <section class="kpis" aria-label="Key figures">
+      <article class="kpi">
+        <span class="kpi-label">Devices</span>
+        <strong class="kpi-value" id="k-devices">—</strong>
+        <span class="kpi-foot" id="k-devices-foot">&nbsp;</span>
+      </article>
+      <article class="kpi">
+        <span class="kpi-label">Subscribers</span>
+        <strong class="kpi-value" id="k-subs">—</strong>
+        <span class="kpi-foot" id="k-subs-foot">&nbsp;</span>
+      </article>
+      <article class="kpi accent-a">
+        <span class="kpi-label">ESP-NOW packets / s</span>
+        <strong class="kpi-value"><span id="k-pps-rx">—</span><small> rx</small></strong>
+        <span class="kpi-foot"><b id="k-pps-tx">—</b> tx · <span id="k-pps-fail">0</span> failed</span>
+      </article>
+      <article class="kpi accent-b">
+        <span class="kpi-label">Messages / s</span>
+        <strong class="kpi-value"><span id="k-mps-up">—</span><small> ↑ to MQTT</small></strong>
+        <span class="kpi-foot"><b id="k-mps-down">—</b> ↓ from MQTT</span>
+      </article>
+      <article class="kpi">
+        <span class="kpi-label">Vault</span>
+        <strong class="kpi-value" id="k-vault">—</strong>
+        <span class="kpi-foot">retained topics</span>
+      </article>
+      <article class="kpi">
+        <span class="kpi-label">Free heap</span>
+        <strong class="kpi-value" id="k-heap">—</strong>
+        <span class="kpi-foot" id="k-heap-foot">&nbsp;</span>
+      </article>
+    </section>
+
+    <!-- Charts -->
+    <section class="charts">
+      <article class="card">
+        <header class="card-head">
+          <h2>ESP-NOW packets <small>per second</small></h2>
+          <div class="legend"><span class="sw rx"></span>rx <span class="sw tx"></span>tx</div>
+        </header>
+        <div class="chart-box"><canvas id="chart-packets"></canvas></div>
+      </article>
+      <article class="card">
+        <header class="card-head">
+          <h2>Messages <small>per second</small></h2>
+          <div class="legend"><span class="sw up"></span>device → MQTT <span class="sw down"></span>MQTT → device
+            <span class="sw loc"></span>gateway → devices <span class="sw dev"></span>devices → gateway</div>
+        </header>
+        <div class="chart-box"><canvas id="chart-messages"></canvas></div>
+      </article>
+    </section>
+
+    <!-- Devices -->
+    <section class="card" id="devices-card">
+      <header class="card-head">
+        <h2>Connected devices <small id="devices-count"></small></h2>
+        <div class="head-tools">
+          <span class="note" id="devices-note"></span>
+        </div>
+      </header>
+      <div class="table-wrap">
+        <table class="table" id="devices-table">
+          <thead>
+            <tr>
+              <th>Device</th>
+              <th>Auth</th>
+              <th>State</th>
+              <th class="num">Subs</th>
+              <th>Last will</th>
+              <th>Signal (avg)</th>
+              <th>Last seen</th>
+              <th>Health</th>
+            </tr>
+          </thead>
+          <tbody id="devices-body"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="devices-empty" hidden>
+        <div class="empty-mark">∅</div>
+        <p>No devices have a session with this gateway yet.</p>
+        <p class="muted">Devices appear here once they pass the ESP-NOW handshake.</p>
+      </div>
+    </section>
+
+    <!-- Vault -->
+    <section class="card" id="vault-card">
+      <header class="card-head">
+        <h2>Message vault <small id="vault-count"></small></h2>
+        <div class="head-tools">
+          <input type="search" id="vault-filter" placeholder="Filter topics or payloads…" aria-label="Filter vault">
+        </div>
+      </header>
+      <div class="table-wrap">
+        <table class="table" id="vault-table">
+          <thead>
+            <tr>
+              <th>Topic</th>
+              <th>Payload</th>
+              <th>Origin</th>
+              <th class="num">Size</th>
+              <th class="num">Updates</th>
+              <th class="num">Updated</th>
+            </tr>
+          </thead>
+          <tbody id="vault-body"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="vault-empty" hidden>
+        <div class="empty-mark">∅</div>
+        <p id="vault-empty-text">Nothing retained yet.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span id="foot-info">NightMare Network</span>
+    <span class="muted" id="foot-sys"></span>
+  </footer>
+
+  <!-- Vault entry viewer -->
+  <dialog id="vault-dialog">
+    <form method="dialog" class="dlg">
+      <header>
+        <h3 id="dlg-topic">topic</h3>
+        <button class="icon-btn" aria-label="Close">✕</button>
+      </header>
+      <dl class="dlg-meta" id="dlg-meta"></dl>
+      <pre id="dlg-payload"></pre>
+      <footer>
+        <button type="button" class="btn" id="dlg-copy">Copy payload</button>
+        <button class="btn primary">Close</button>
+      </footer>
+    </form>
+  </dialog>
+</body>
+</html>

@@ -4,3 +4,16 @@ CONFIG_MQTT_PROTOCOL_5=y
 
 # One encrypted ESP-NOW peer per session: espDeviceManager::MaxDevices (16).
 CONFIG_ESP_WIFI_ESPNOW_MAX_ENCRYPT_NUM=16
+
+# This board has 16 MiB of flash. Keep a single factory image, but give it
+# enough room for the gateway and web server instead of IDF's 1 MiB default.
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# The N16R8 board has 8 MiB octal PSRAM. Let malloc place large message
+# payloads there while preserving internal RAM for task stacks and DMA.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_USE_MALLOC=y

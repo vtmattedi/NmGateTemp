@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+#include <algorithm>
+#include <vector>
 #include "LedController/ledController.h"
 #include "EspWifi/espWifi.h"
 #include "TimeSync/timeSync.h"
@@ -12,8 +14,8 @@
 #include "esp_timer.h"
 #include "esp_log.h"
 #include "creds.h"
-#include "driver/temperature_sensor.h"
 #include "esp_system.h"
+#include "System/chipTemperature.h"
 
 #ifndef NM_ESPNOW_PSK
 #error "Define NM_ESPNOW_PSK (the ESP-NOW network key, same on every device) in include/creds.h"
@@ -52,27 +54,35 @@ void initSequence()
 static const gpio_num_t BLINK_GPIO = GPIO_NUM_8;
 static const gpio_num_t BLINK_GPIO2 = GPIO_NUM_15;
 
-#define SERIAL_LINE_MAX 64
+// Long enough for "wifi connect <32 char ssid> <63 char password>" with quotes.
+#define SERIAL_LINE_MAX 192
 static char s_serialLine[SERIAL_LINE_MAX];
 static size_t s_serialLen = 0;
 
+// Reads the broker's published snapshot (refreshed twice a second) rather than
+// walking its device table, which belongs to the gateway task.
 static void printDeviceList(void)
 {
     const uint64_t nowMs = (uint64_t)(esp_timer_get_time() / 1000);
-    const uint8_t count = espBroker_deviceCount();
+    std::vector<EspBrokerDeviceInfo> devices;
+    espBroker_snapshotDevices(devices);
 
-    ESP_LOGI("Serial", "%u session(s):", count);
-    for (uint8_t i = 0; i < count; i++)
+    ESP_LOGI("Serial", "%u session(s):", (unsigned)devices.size());
+    for (const EspBrokerDeviceInfo &device : devices)
     {
-        const NightMare::Device *device = espBroker_deviceAt(i);
-        if (device == nullptr)
-            continue;
+        // The name a device reported on "<name>/status", else its MAC.
+        const char *who = device.name.empty() ? device.mac.c_str() : device.name.c_str();
+        char rtt[16] = "n/a";
+        if (device.hasRtt)
+            snprintf(rtt, sizeof(rtt), "%.1fms", device.rttMs);
+        char signal[16] = "n/a";
+        if (device.hasRssi)
+            snprintf(signal, sizeof(signal), "%.0fdBm", device.avgRssi);
 
-        ESP_LOGI("Serial", "  %s cid=%u state=%s subs=%u lastSeen=%llus lastWill=%s",
-                 device->address().toString().c_str(), (unsigned)device->cid(),
-                 NightMare::connectionStateName(device->state()), (unsigned)device->subscriptionCount(),
-                 (unsigned long long)((nowMs - device->lastSeenAtMs()) / 1000),
-                 device->hasLastWill() ? "yes" : "no");
+        ESP_LOGI("Serial", "  %-18s cid=%u state=%s subs=%u rssi=%s rtt=%s lastSeen=%llus lastWill=%s%s", who,
+                 (unsigned)device.cid, NightMare::connectionStateName(device.state), (unsigned)device.subscriptions.size(),
+                 signal, rtt, (unsigned long long)((nowMs - device.lastSeenMs) / 1000),
+                 device.hasLastWill ? "yes" : "no", device.disconnectCandidate ? " [disconnect candidate]" : "");
     }
 }
 
@@ -94,7 +104,6 @@ static void printStatus(void)
 // One line = "<command> [args]". To add one: write a handler taking the
 // (already trimmed, possibly empty) argument string and add a row below.
 
-bool chipTempRead(float &temperatureC);
 static bool s_tempLogEnabled = true; // the once-a-second chip temperature log in app_main
 
 static void cmdHelp(const char *args);
@@ -129,6 +138,163 @@ static void cmdReboot(const char *)
     esp_restart();
 }
 
+// Splits `args` in place into whitespace separated words. A word may be
+// "double quoted" to hold spaces (\" and \\ are escapes inside quotes), and ""
+// is an empty word. Returns how many words were found, at most `max`.
+static int splitArgs(char *args, char **words, int max)
+{
+    int count = 0;
+    char *p = args;
+    while (*p != '\0' && count < max)
+    {
+        while (*p == ' ' || *p == '\t')
+            p++;
+        if (*p == '\0')
+            break;
+
+        if (*p == '"')
+        {
+            char *write = ++p;
+            words[count++] = write;
+            while (*p != '\0' && *p != '"')
+            {
+                if (*p == '\\' && (p[1] == '"' || p[1] == '\\'))
+                    p++;
+                *write++ = *p++;
+            }
+            if (*p == '"')
+                p++;
+            *write = '\0';
+        }
+        else
+        {
+            words[count++] = p;
+            while (*p != '\0' && *p != ' ' && *p != '\t')
+                p++;
+            if (*p != '\0')
+                *p++ = '\0';
+        }
+    }
+    return count;
+}
+
+static void cmdGateway(const char *args)
+{
+    if (strcmp(args, "off") == 0)
+    {
+        nightmare_gateway_enable(false);
+        ESP_LOGI("Serial", "Gateway turning off: ESP-NOW and MQTT stop, sessions are dropped");
+    }
+    else if (strcmp(args, "on") == 0)
+    {
+        nightmare_gateway_enable(true);
+        ESP_LOGI("Serial", "Gateway turning on: devices have to reconnect");
+    }
+    else if (args[0] != '\0')
+    {
+        ESP_LOGW("Serial", "usage: gateway [on|off]");
+        return;
+    }
+    else
+        ESP_LOGI("Serial", "gateway %s (%s)", nightmare_gateway_enabled() ? "on" : "off",
+                 nightmare_gateway_state_name(nightmare_gateway_state()));
+}
+
+static const char *authModeName(wifi_auth_mode_t mode)
+{
+    switch (mode)
+    {
+    case WIFI_AUTH_OPEN: return "open";
+    case WIFI_AUTH_WEP: return "WEP";
+    case WIFI_AUTH_WPA_PSK: return "WPA";
+    case WIFI_AUTH_WPA2_PSK: return "WPA2";
+    case WIFI_AUTH_WPA_WPA2_PSK: return "WPA/WPA2";
+    case WIFI_AUTH_WPA2_ENTERPRISE: return "WPA2-ent";
+    case WIFI_AUTH_WPA3_PSK: return "WPA3";
+    case WIFI_AUTH_WPA2_WPA3_PSK: return "WPA2/WPA3";
+    case WIFI_AUTH_OWE: return "OWE";
+    default: return "other";
+    }
+}
+
+// [=======   ] for -55 dBm: full at -50 and better, empty at -100.
+static void signalBar(int rssi, char *out, size_t size)
+{
+    const int width = 10;
+    int quality = (rssi + 100) * 2;
+    quality = quality < 0 ? 0 : quality > 100 ? 100 : quality;
+    const int filled = (quality * width + 50) / 100;
+    snprintf(out, size, "[");
+    for (int i = 0; i < width && strlen(out) + 2 < size; i++)
+        strcat(out, i < filled ? "=" : " ");
+    strcat(out, "]");
+}
+
+static void wifiScan(void)
+{
+    printf("Scanning (ESP-NOW pauses briefly)...\n");
+    std::vector<wifi_ap_record_t> networks;
+    const esp_err_t err = wifi_scan(networks);
+    if (err != ESP_OK)
+    {
+        ESP_LOGW("Serial", "Scan failed: %s", esp_err_to_name(err));
+        return;
+    }
+    std::sort(networks.begin(), networks.end(),
+              [](const wifi_ap_record_t &a, const wifi_ap_record_t &b) { return a.rssi > b.rssi; });
+
+    wifi_ap_record_t current = {};
+    const bool haveCurrent = wifi_is_connected() && esp_wifi_sta_get_ap_info(&current) == ESP_OK;
+
+    printf("\n %2s  %-12s  %8s  %3s  %-9s  %s\n", "#", "Signal", "dBm", "Ch", "Security", "SSID");
+    printf(" --  ------------  --------  ---  ---------  ------------------------\n");
+    int index = 1;
+    for (const wifi_ap_record_t &ap : networks)
+    {
+        char bar[16];
+        signalBar(ap.rssi, bar, sizeof(bar));
+        const bool joined = haveCurrent && memcmp(ap.bssid, current.bssid, sizeof(ap.bssid)) == 0;
+        const char *ssid = ap.ssid[0] != '\0' ? (const char *)ap.ssid : "<hidden>";
+        printf(" %2d  %s  %4d dBm  %3u  %-9s  %s%s\n", index++, bar, ap.rssi, (unsigned)ap.primary,
+               authModeName(ap.authmode), ssid, joined ? "   <- connected" : "");
+    }
+    printf("\n%u network(s) found\n", (unsigned)networks.size());
+}
+
+static void cmdWifi(const char *args)
+{
+    char line[SERIAL_LINE_MAX];
+    strncpy(line, args, sizeof(line) - 1);
+    line[sizeof(line) - 1] = '\0';
+    char *words[4];
+    const int count = splitArgs(line, words, 4);
+
+    if (count >= 1 && strcmp(words[0], "scan") == 0)
+    {
+        wifiScan();
+        return;
+    }
+    if (count >= 2 && strcmp(words[0], "connect") == 0)
+    {
+        if (count > 3)
+        {
+            ESP_LOGW("Serial", "Too many arguments: put an ssid or password with spaces in \"quotes\"");
+            return;
+        }
+        const char *password = count == 3 ? words[2] : "";
+        const esp_err_t err = wifi_connect(words[1], password);
+        if (err == ESP_ERR_INVALID_ARG)
+            ESP_LOGW("Serial", "Invalid ssid (1-32 chars) or password (empty for open, else 8-63 chars)");
+        else if (err != ESP_OK)
+            ESP_LOGW("Serial", "Could not start connecting: %s", esp_err_to_name(err));
+        else
+            ESP_LOGI("Serial", "Connecting to \"%s\"%s - the log shows the result", words[1],
+                     password[0] == '\0' ? " (open network)" : "");
+        return;
+    }
+    ESP_LOGW("Serial", "usage: wifi scan | wifi connect <ssid> [password]   (quote values with spaces)");
+}
+
 struct SerialCommand
 {
     const char *name;
@@ -139,7 +305,9 @@ struct SerialCommand
 static const SerialCommand s_commands[] = {
     {"help", "list commands", cmdHelp},
     {"status", "wifi, mqtt, subscribers, beacon", cmdStatus},
-    {"devices", "ESP-NOW sessions", cmdDevices},
+    {"devices", "ESP-NOW sessions (name, signal, rtt)", cmdDevices},
+    {"gateway", "on | off | (status)", cmdGateway},
+    {"wifi", "scan | connect <ssid> [password]", cmdWifi},
     {"heap", "free / minimum free heap", cmdHeap},
     {"temp", "chip temperature now; 'temp on|off' toggles the periodic log", cmdTemp},
     {"reboot", "restart the gateway", cmdReboot},
@@ -201,7 +369,11 @@ static void pumpSerial(void)
 
             if (start[0] != '\0')
             {
-                ESP_LOGI("Serial", "Received: %s", start);
+                // Name only: the arguments can hold a Wi-Fi password.
+                size_t nameLength = 0;
+                while (start[nameLength] != '\0' && start[nameLength] != ' ' && start[nameLength] != '\t')
+                    nameLength++;
+                ESP_LOGI("Serial", "Received: %.*s%s", (int)nameLength, start, start[nameLength] != '\0' ? " ..." : "");
                 handleSerialLine(start);
             }
             s_serialLen = 0;
@@ -216,68 +388,6 @@ static void pumpSerial(void)
 }
 
 static const char *TEMPTAG = "chip_temp";
-
-static temperature_sensor_handle_t s_tempSensor = nullptr;
-
-bool chipTempInit()
-{
-    temperature_sensor_config_t config =
-        TEMPERATURE_SENSOR_CONFIG_DEFAULT(10, 90);
-
-    esp_err_t err =
-        temperature_sensor_install(&config, &s_tempSensor);
-
-    if (err != ESP_OK)
-    {
-        ESP_LOGE(TEMPTAG, "temperature_sensor_install failed: %s",
-                 esp_err_to_name(err));
-        return false;
-    }
-
-    err = temperature_sensor_enable(s_tempSensor);
-
-    if (err != ESP_OK)
-    {
-        ESP_LOGE(TEMPTAG, "temperature_sensor_enable failed: %s",
-                 esp_err_to_name(err));
-
-        temperature_sensor_uninstall(s_tempSensor);
-        s_tempSensor = nullptr;
-        return false;
-    }
-
-    return true;
-}
-
-bool chipTempRead(float &temperatureC)
-{
-    if (s_tempSensor == nullptr)
-        return false;
-
-    esp_err_t err =
-        temperature_sensor_get_celsius(
-            s_tempSensor,
-            &temperatureC);
-
-    if (err != ESP_OK)
-    {
-        ESP_LOGW(TEMPTAG, "temperature read failed: %s",
-                 esp_err_to_name(err));
-        return false;
-    }
-
-    return true;
-}
-
-void chipTempDeinit()
-{
-    if (s_tempSensor == nullptr)
-        return;
-
-    temperature_sensor_disable(s_tempSensor);
-    temperature_sensor_uninstall(s_tempSensor);
-    s_tempSensor = nullptr;
-}
 
 uint64_t millis()
 {
@@ -295,11 +405,11 @@ extern "C" void app_main(void)
     ws2812_init();
     if (start_nightmare_gateway(gatewayConfig()) != pdPASS)
         ESP_LOGE("main", "Gateway did not start: check its configuration");
-    wifi_init_sta();
-    ntp_sync_start();
     bool tempOk = chipTempInit();
     if (!tempOk)
         ESP_LOGE(TEMPTAG, "Failed to initialize chip temperature sensor");
+    wifi_init_sta();
+    ntp_sync_start();
 
     int lastTempLog = 0;
     while (1)

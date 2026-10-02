@@ -38,14 +38,56 @@ struct NightMareGatewayConfig
     NightMareEspNowConfig espnowConfig;
 };
 
+enum class NightMareGatewayState : uint8_t
+{
+    Stopped,
+    WaitForWifiStack,
+    StartEspNow,
+    Running,
+};
+
 // The application owns the config source (creds.h, provisioning, ...); the
 // gateway keeps what it needs from `config` and not the struct itself.
 // pdFAIL when the config is unusable (e.g. espnowBroker without a valid PSK)
 // or the task cannot start.
 BaseType_t start_nightmare_gateway(const NightMareGatewayConfig &config);
 
+// Thread-safe views of the retained-message vault, for the web UI.
+size_t nightmare_gateway_vault_snapshot(std::vector<NightMare::RetainedEntry> &out);
+size_t nightmare_gateway_vault_size();
+
+// "gateway off": stops ESP-NOW (sessions dropped, no beacon) and MQTT. "on"
+// starts them again; devices have to reconnect. Asynchronous: the gateway task
+// does the work, watch nightmare_gateway_state() for Stopped / Running.
+void nightmare_gateway_enable(bool enabled);
+bool nightmare_gateway_enabled();
+
+NightMareGatewayState nightmare_gateway_state();
+const char *nightmare_gateway_state_name(NightMareGatewayState state);
+
+// Publishes a gateway-originated message to everyone: the MQTT broker (when
+// connected) and every connected ESP-NOW device that has at least one
+// subscription filter matching the topic. Retains it in the vault if flagged
+// persistent. Must be called from the gateway task (it walks the device
+// table). True if it reached at least one side (a local send, or queued for MQTT).
+bool publishToAll(const NightMare::Message &message);
+
 // Answers a "<x>/in" request on "<x>/out" -- the same convention a
 // NightMareNetwork device's own console uses -- reaching whoever is
 // subscribed to the reply topic, locally and/or over MQTT. Exposed for any
 // future gateway/... command handler to reuse, not just the debug one.
-void replyMessage(const NightMare::Message &current, const NightMare::Message &response);
+// By default the answer goes back only to the side `current` came from (an
+// ESP-NOW device -> local subscribers; MQTT -> the broker); Both publishes it
+// everywhere like publishToAll().
+enum class ReplyTarget : uint8_t
+{
+    Source,
+    Both,
+};
+void replyMessage(const NightMare::Message &current, const NightMare::Message &response,
+                  ReplyTarget target = ReplyTarget::Source);
+
+// Same delivery rule as replyMessage, but `response` keeps the topic it already
+// has (no "/in" -> "/out" rewrite).
+bool respondTo(const NightMare::Message &current, const NightMare::Message &response,
+               ReplyTarget target = ReplyTarget::Source);

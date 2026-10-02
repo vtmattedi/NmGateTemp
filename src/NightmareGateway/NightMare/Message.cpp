@@ -1,6 +1,7 @@
 #include "NightmareGateway/NightMare/Message.h"
 #include "NightmareGateway/NightMare/Topic.h"
 #include <algorithm>
+#include <utility>
 
 namespace NightMare
 {
@@ -37,6 +38,24 @@ namespace NightMare
         return message;
     }
 
+    Message Message::fromRawData(std::vector<uint8_t> &&raw)
+    {
+        Message message;
+        if (raw.empty())
+            return message;
+
+        const size_t topicLength = raw[0] & TopicLengthMask;
+        if (topicLength == 0 || raw.size() < 1 + topicLength)
+            return message;
+
+        message.direction = Direction::LOCAL_TO_REMOTE;
+        message.persistent = (raw[0] & RetainedFlag) != 0;
+        message.topic.assign(reinterpret_cast<const char *>(raw.data() + 1), topicLength);
+        raw.erase(raw.begin(), raw.begin() + 1 + topicLength);
+        message.payload = std::move(raw);
+        return message;
+    }
+
     std::vector<uint8_t> Message::toRawData() const
     {
         std::vector<uint8_t> raw;
@@ -50,34 +69,54 @@ namespace NightMare
         return raw;
     }
 
-    bool MessageVault::retainMessage(const std::string &topic, const std::vector<uint8_t> &payload, uint32_t payload_length, Direction direction)
+    bool MessageVault::retainMessage(const std::string &topic, const std::vector<uint8_t> &payload, uint32_t payload_length, Direction direction, uint64_t nowMs)
     {
         if (!isValidPublishTopic(topic))
             return false;
 
+        std::lock_guard<std::mutex> guard(lock_);
         const size_t length = std::min<size_t>(payload_length, payload.size());
         if (length == 0)
             return retained.erase(topic) > 0;
 
-        Message &slot = retained[topic];
+        RetainedEntry &entry = retained[topic];
+        Message &slot = entry.message;
         slot.direction = direction;
         slot.topic = topic;
         slot.payload.assign(payload.begin(), payload.begin() + length);
         slot.persistent = true;
+        entry.updatedAtMs = nowMs;
+        entry.revisions++;
         return true;
     }
 
     bool MessageVault::getMessagesForTopic(const std::string &topic, std::vector<Message> &output)
     {
+        std::lock_guard<std::mutex> guard(lock_);
         bool found = false;
         for (const auto &entry : retained)
         {
             if (topicMatchesPattern(entry.first, topic))
             {
-                output.push_back(entry.second);
+                output.push_back(entry.second.message);
                 found = true;
             }
         }
         return found;
+    }
+
+    size_t MessageVault::snapshot(std::vector<RetainedEntry> &output)
+    {
+        std::lock_guard<std::mutex> guard(lock_);
+        output.reserve(output.size() + retained.size());
+        for (const auto &entry : retained)
+            output.push_back(entry.second);
+        return retained.size();
+    }
+
+    size_t MessageVault::size()
+    {
+        std::lock_guard<std::mutex> guard(lock_);
+        return retained.size();
     }
 }

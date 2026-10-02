@@ -292,6 +292,15 @@ void espDeviceManager::expire(uint64_t nowMs, void (*onLost)(Device &device))
     }
 }
 
+void espDeviceManager::reset()
+{
+    for (Device &device : devices)
+        device.forgetSessionKey();
+    devices.clear();
+    for (PendingHandshake &entry : pending)
+        NightMare::EspNowAuth::wipe(&entry, sizeof(entry));
+}
+
 Device *espDeviceManager::deviceAt(uint8_t index)
 {
     if (index >= devices.size())

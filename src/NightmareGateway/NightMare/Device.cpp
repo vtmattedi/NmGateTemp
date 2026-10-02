@@ -18,7 +18,7 @@ namespace NightMare
     }
 
     Device::Device(const MacAddress &address, uint16_t cid, uint64_t nowMs)
-        : mac(address), cid_(cid), lastSeenMs(nowMs) {}
+        : mac(address), cid_(cid), sessionStartMs_(nowMs), lastSeenMs(nowMs) {}
 
     bool Device::isSubscribedTo(const std::string &topic) const
     {
@@ -78,10 +78,40 @@ namespace NightMare
         hasSessionKey_ = false;
     }
 
-    void Device::markSeen(uint8_t signal, uint64_t nowMs)
+    void Device::markSeen(int8_t signal, uint64_t nowMs)
     {
         rssi = signal;
+        if (!hasRssi_)
+        {
+            avgRssi_ = signal;
+            hasRssi_ = true;
+        }
+        else
+            avgRssi_ += ((float)signal - avgRssi_) / 8.0f;
+        rxFrames_++;
         lastSeenMs = nowMs;
+    }
+
+    void Device::noteRtt(float ms)
+    {
+        if (!hasRtt_)
+        {
+            rttMs_ = ms;
+            hasRtt_ = true;
+        }
+        else
+            rttMs_ += (ms - rttMs_) / 4.0f;
+    }
+
+    std::vector<std::string> Device::subscriptionList() const
+    {
+        std::vector<std::string> list;
+        for (const std::string &filter : subscriptions)
+        {
+            if (!filter.empty())
+                list.push_back(filter);
+        }
+        return list;
     }
 
     size_t Device::subscriptionCount() const

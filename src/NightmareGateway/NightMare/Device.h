@@ -39,7 +39,13 @@ namespace NightMare
         // so nothing is delivered to the session and nothing is accepted from
         // it, until the handshake either proves itself or is abandoned.
         bool suspended_ = false;
-        uint8_t rssi = 0;
+        int8_t rssi = 0;                             // dBm of the last accepted frame
+        float avgRssi_ = 0;                          // exponential moving average of rssi
+        bool hasRssi_ = false;
+        uint32_t rxFrames_ = 0;                      // accepted session frames
+        float rttMs_ = 0;                            // smoothed link round trip, see noteRtt()
+        bool hasRtt_ = false;
+        uint64_t sessionStartMs_ = 0;
         uint64_t lastSeenMs = 0;                     // last accepted frame (or session start)
         std::string subscriptions[MaxSubscriptions]; // list of topics this device is subscribed to
         Message lastWill;                            // the last will message for this device
@@ -70,7 +76,21 @@ namespace NightMare
         void resume() { suspended_ = false; }
 
         uint64_t lastSeenAtMs() const { return lastSeenMs; }
-        void markSeen(uint8_t signal, uint64_t nowMs);
+        void markSeen(int8_t signal, uint64_t nowMs);
+        int8_t lastRssi() const { return rssi; }
+        // Smoothed over the last ~8 frames; only meaningful once hasRssi().
+        float averageRssi() const { return avgRssi_; }
+        bool hasRssi() const { return hasRssi_; }
+        uint32_t rxFrames() const { return rxFrames_; }
+        // Time from handing a unicast frame to the radio until the peer's
+        // link-layer ACK came back: the real round trip of the radio link, no
+        // cooperation from the device needed. Smoothed over the last few samples.
+        void noteRtt(float ms);
+        float rttMs() const { return rttMs_; }
+        bool hasRtt() const { return hasRtt_; }
+        uint64_t sessionStartMs() const { return sessionStartMs_; }
+        // The filters in use, for telemetry.
+        std::vector<std::string> subscriptionList() const;
         size_t subscriptionCount() const;
         bool hasLastWill() const { return !lastWill.topic.empty(); }
         const Message &lastWillMessage() const { return lastWill; }

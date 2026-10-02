@@ -92,6 +92,10 @@ public:
     // kind only (the ones whose last will should fire), before removal.
     void expire(uint64_t nowMs, void (*onLost)(NightMare::Device &device) = nullptr);
 
+    // Drops every session and pending handshake without touching the radio or
+    // firing last wills: for when the whole ESP-NOW stack is being torn down.
+    void reset();
+
     uint8_t getDeviceCount() const { return (uint8_t)devices.size(); }
     NightMare::Device *deviceAt(uint8_t index);
     uint8_t getSubscriberCount() const; // CONNECTED sessions with at least one subscription

@@ -1,0 +1,735 @@
+I (19666484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19667924) gateway: Local 'Minicroft-C3/resource/door/state' (5 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19671484) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19671714) gateway: Local 'Minicroft-C3/resource/light/set' (4 bytes) from 94:B5:55:64:57:2C
+I (19671724) gateway: Local 'Minicroft-C3/resource/light/state' (4 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19672434) gateway: Local 'Minicroft-C3/resource/light/set' (5 bytes) from 94:B5:55:64:57:2C
+I (19672444) gateway: Local 'Minicroft-C3/resource/light/state' (5 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19676494) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19678864) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19680684) gateway: Local 'Moriarty/telemetry/heartbeat' (39 bytes) from 94:B5:55:64:57:2C
+I (19681484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19686484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19691054) gateway: Local 'Moriarty/telemetry/network' (231 bytes) from 94:B5:55:64:57:2C [retained]
+I (19691494) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19693864) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19695204) gateway: Local 'Moriarty/telemetry/system' (109 bytes) from 94:B5:55:64:57:2C [retained]
+I (19695704) gateway: Local 'Moriarty/telemetry/heartbeat' (39 bytes) from 94:B5:55:64:57:2C
+I (19696494) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19701484) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19706484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19708674) gateway: Local 'Minicroft-C3/telemetry/system' (110 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19708874) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19710704) gateway: Local 'Moriarty/telemetry/heartbeat' (39 bytes) from 94:B5:55:64:57:2C
+I (19711484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19716484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19721484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19723884) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19725704) gateway: Local 'Moriarty/telemetry/heartbeat' (39 bytes) from 94:B5:55:64:57:2C
+I (19726494) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19731484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19736484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19738894) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19740704) gateway: Local 'Moriarty/telemetry/heartbeat' (39 bytes) from 94:B5:55:64:57:2C
+I (19741484) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19744004) gateway: Local 'Minicroft-C3/telemetry/network' (230 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19746484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19751484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19753904) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19755234) gateway: Local 'Moriarty/telemetry/system' (109 bytes) from 94:B5:55:64:57:2C [retained]
+I (19755734) gateway: Local 'Moriarty/telemetry/heartbeat' (39 bytes) from 94:B5:55:64:57:2C
+I (19756484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19761484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19766484) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19768714) gateway: Local 'Minicroft-C3/telemetry/system' (110 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19768914) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19770734) gateway: Local 'Moriarty/telemetry/heartbeat' (39 bytes) from 94:B5:55:64:57:2C
+I (19771484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19776484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19781484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19783914) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19786484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+W (19788004) ESPNOW: Peer exists. Please call API esp_now_mod_peer()!
+I (19788004) espSessions: Handshake from 94:B5:55:64:57:2C; session 2 paused until it is proven
+I (19788014) espBroker: CONNECT from 94:B5:55:64:57:2C, challenged
+I (19788014) espSessions: 94:B5:55:64:57:2C proved itself; session 2 replaced
+I (19788024) espBroker: 94:B5:55:64:57:2C authenticated as session 3, securing
+I (19788024) espBroker: Session 3 (94:B5:55:64:57:2C) secured and connected
+I (19788034) espBroker: 94:B5:55:64:57:2C sets last will on 'Moriarty/status'
+I (19788044) espBroker: 94:B5:55:64:57:2C subscribes to '+/status'
+I (19788054) espBroker: 94:B5:55:64:57:2C subscribes to '+/resource/+/state'
+I (19788074) espBroker: 94:B5:55:64:57:2C subscribes to 'Control/forecast'
+I (19788074) espBroker: 94:B5:55:64:57:2C subscribes to 'Moriarty/console/in'
+I (19788084) espBroker: 94:B5:55:64:57:2C subscribes to 'Moriarty/console/controlled/+/in'
+I (19788084) espBroker: 94:B5:55:64:57:2C subscribes to 'all/console/in'
+I (19788094) espBroker: 94:B5:55:64:57:2C subscribes to 'Control/time'
+I (19788104) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/manifest/msgpack'
+I (19788104) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/resource/ac_state/state'
+I (19788114) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/resource/ac_known/state'
+I (19788124) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/resource/ac_sleep_deadline/state'
+I (19788124) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/resource/temperature/state'
+I (19788134) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/resource/ac_power/state'
+I (19788144) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/resource/ac_temperature/state'
+I (19788154) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/resource/ac_target/state'
+I (19788164) espBroker: 94:B5:55:64:57:2C subscribes to 'Minicroft-C3/manifest/msgpack'
+I (19788174) gateway: Local 'Moriarty/console/out' (6 bytes) from 94:B5:55:64:57:2C
+I (19788174) gateway: Local 'Moriarty/status' (84 bytes) from 94:B5:55:64:57:2C [retained]
+I (19788184) gateway: Device Moriarty reports status '{"name":"Moriarty","hardware":"Esp32-nm-6455b594","timezone":"<-03>3","online":true}'
+I (19788194) [DM]: Setting assumed name for device 94:B5:55:64:57:2C: Moriarty
+I (19788204) gateway: Local 'Control/request' (8 bytes) from 94:B5:55:64:57:2C
+I (19788204) gateway: Local 'Moriarty/status' (84 bytes) from 94:B5:55:64:57:2C [retained]
+I (19788214) gateway: Device Moriarty reports status '{"name":"Moriarty","hardware":"Esp32-nm-6455b594","timezone":"<-03>3","online":true}'
+I (19788224) [DM]: Setting assumed name for device 94:B5:55:64:57:2C: Moriarty
+I (19788234) gateway: Local 'Moriarty/manifest' (28 bytes) from 94:B5:55:64:57:2C [retained]
+I (19788244) gateway: Local 'Moriarty/manifest/msgpack' (4 bytes) from 94:B5:55:64:57:2C [retained]
+I (19788254) gateway: Local 'Moriarty/manifest/consume' (1907 bytes) from 94:B5:55:64:57:2C [retained]
+I (19788264) gateway: Local 'Moriarty/manifest/consume/msgpack' (448 bytes) from 94:B5:55:64:57:2C [retained]
+I (19788304) gateway: Local 'Moriarty/info' (660 bytes) from 94:B5:55:64:57:2C [retained]
+I (19788404) gateway: Local 'Moriarty/hardware' (4350 bytes) from 94:B5:55:64:57:2C [retained]
+I (19788414) gateway: Local 'Moriarty/telemetry/system' (105 bytes) from 94:B5:55:64:57:2C [retained]
+I (19788424) gateway: Local 'Moriarty/telemetry/network' (232 bytes) from 94:B5:55:64:57:2C [retained]
+I (19788424) gateway: Local 'Moriarty/telemetry/heartbeat' (32 bytes) from 94:B5:55:64:57:2C
+I (19791484) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19796484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19798924) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19799604) gateway: Local 'Moriarty/telemetry/heartbeat' (33 bytes) from 94:B5:55:64:57:2C
+I (19801484) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19804844) gateway: Local 'Minicroft-C3/resource/light/set' (4 bytes) from 94:B5:55:64:57:2C
+I (19804854) gateway: Local 'Minicroft-C3/resource/light/state' (4 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19805604) gateway: Local 'Minicroft-C3/resource/light/set' (5 bytes) from 94:B5:55:64:57:2C
+I (19805614) gateway: Local 'Minicroft-C3/resource/light/state' (5 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19806464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19811474) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19813934) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19814604) gateway: Local 'Moriarty/telemetry/heartbeat' (33 bytes) from 94:B5:55:64:57:2C
+I (19816474) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19821474) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19826474) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19828734) gateway: Local 'Minicroft-C3/telemetry/system' (110 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19828934) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19829604) gateway: Local 'Moriarty/telemetry/heartbeat' (33 bytes) from 94:B5:55:64:57:2C
+I (19831484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19836474) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19841474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19843944) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19844604) gateway: Local 'Moriarty/telemetry/system' (106 bytes) from 94:B5:55:64:57:2C [retained]
+I (19844614) gateway: Local 'Moriarty/telemetry/heartbeat' (33 bytes) from 94:B5:55:64:57:2C
+I (19846484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19851474) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19856474) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19858944) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19859624) gateway: Local 'Moriarty/telemetry/heartbeat' (33 bytes) from 94:B5:55:64:57:2C
+I (19861484) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19866474) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19871484) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19873954) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19874614) gateway: Local 'Moriarty/telemetry/heartbeat' (33 bytes) from 94:B5:55:64:57:2C
+I (19876474) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19881474) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19886474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19888764) gateway: Local 'Minicroft-C3/telemetry/system' (110 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19888964) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19889624) gateway: Local 'Moriarty/telemetry/heartbeat' (34 bytes) from 94:B5:55:64:57:2C
+I (19891474) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19896474) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19901474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19903974) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19904614) gateway: Local 'Moriarty/telemetry/system' (107 bytes) from 94:B5:55:64:57:2C [retained]
+I (19904634) gateway: Local 'Moriarty/telemetry/heartbeat' (34 bytes) from 94:B5:55:64:57:2C
+I (19906474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19911474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19916474) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19918974) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19919634) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (19921474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19926474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19931474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19933984) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19934634) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (19936474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19941474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19946474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19948794) gateway: Local 'Minicroft-C3/telemetry/system' (110 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19948994) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19949634) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (19951474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19956474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19961464) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19963994) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19964614) gateway: Local 'Moriarty/telemetry/system' (107 bytes) from 94:B5:55:64:57:2C [retained]
+I (19964634) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (19966474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19967904) gateway: Local 'Minicroft-C3/resource/door/state' (5 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19971474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19976464) gateway: Local 'Minicroft-C3/resource/temperature/state' (4 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19979004) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19979634) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (19981474) gateway: Local 'Minicroft-C3/resource/temperature/state' (4 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19986474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19991464) gateway: Local 'Minicroft-C3/resource/temperature/state' (4 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (19994004) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (19994644) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (19996474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20001464) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20006474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20008804) gateway: Local 'Minicroft-C3/telemetry/system' (110 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20009014) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (20009644) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (20011474) gateway: Local 'Minicroft-C3/resource/temperature/state' (4 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20016464) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20021464) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20024014) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (20024614) gateway: Local 'Moriarty/telemetry/system' (107 bytes) from 94:B5:55:64:57:2C [retained]
+I (20024644) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (20026474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20031474) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20034384) gateway: Local 'Minicroft-C3/resource/light/state' (4 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20036464) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20039014) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (20039654) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (20041464) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20044024) gateway: Local 'Minicroft-C3/telemetry/network' (230 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20046464) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20051464) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20054024) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (20054654) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (20056464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20061464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20066464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20068834) gateway: Local 'Minicroft-C3/telemetry/system' (110 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20069034) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (20069654) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (20071464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20076464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20081464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20084034) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (20084604) gateway: Local 'Moriarty/telemetry/network' (231 bytes) from 94:B5:55:64:57:2C [retained]
+I (20084634) gateway: Local 'Moriarty/telemetry/system' (107 bytes) from 94:B5:55:64:57:2C [retained]
+I (20084664) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (20086464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20091464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20096464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20099044) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (20099664) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (20101464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20106464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20111464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20114044) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (20114664) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (20116464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20121464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20126464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20128864) gateway: Local 'Minicroft-C3/telemetry/system' (110 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20129064) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (20129664) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (20131464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20136464) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20141464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20144074) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (20144634) gateway: Local 'Moriarty/telemetry/system' (107 bytes) from 94:B5:55:64:57:2C [retained]
+I (20144674) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (20146464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20151454) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20156464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20159074) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (20159674) gateway: Local 'Moriarty/telemetry/heartbeat' (35 bytes) from 94:B5:55:64:57:2C
+I (20161464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20166464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20171454) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20174084) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (20176464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+W (20178004) ESPNOW: Peer exists. Please call API esp_now_mod_peer()!
+I (20178004) espSessions: Handshake from 94:B5:55:64:57:2C; session 3 paused until it is proven
+I (20178004) espBroker: CONNECT from 94:B5:55:64:57:2C, challenged
+I (20178014) espSessions: 94:B5:55:64:57:2C proved itself; session 3 replaced
+I (20178024) espBroker: 94:B5:55:64:57:2C authenticated as session 4, securing
+I (20178024) espBroker: Session 4 (94:B5:55:64:57:2C) secured and connected
+I (20178034) espBroker: 94:B5:55:64:57:2C sets last will on 'Moriarty/status'
+I (20178044) espBroker: 94:B5:55:64:57:2C subscribes to '+/status'
+I (20178054) espBroker: 94:B5:55:64:57:2C subscribes to '+/resource/+/state'
+I (20178064) espBroker: 94:B5:55:64:57:2C subscribes to 'Control/forecast'
+I (20178064) espBroker: 94:B5:55:64:57:2C subscribes to 'Moriarty/console/in'
+I (20178074) espBroker: 94:B5:55:64:57:2C subscribes to 'Moriarty/console/controlled/+/in'
+I (20178074) espBroker: 94:B5:55:64:57:2C subscribes to 'all/console/in'
+I (20178084) espBroker: 94:B5:55:64:57:2C subscribes to 'Control/time'
+I (20178094) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/manifest/msgpack'
+I (20178104) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/resource/ac_state/state'
+I (20178104) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/resource/ac_known/state'
+I (20178114) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/resource/ac_sleep_deadline/state'
+I (20178124) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/resource/temperature/state'
+I (20178124) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/resource/ac_power/state'
+I (20178134) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/resource/ac_temperature/state'
+I (20178144) espBroker: 94:B5:55:64:57:2C subscribes to 'Mary/resource/ac_target/state'
+I (20178154) espBroker: 94:B5:55:64:57:2C subscribes to 'Minicroft-C3/manifest/msgpack'
+I (20178164) gateway: Local 'Moriarty/console/out' (6 bytes) from 94:B5:55:64:57:2C
+I (20178164) gateway: Local 'Moriarty/status' (84 bytes) from 94:B5:55:64:57:2C [retained]
+I (20178174) gateway: Device Moriarty reports status '{"name":"Moriarty","hardware":"Esp32-nm-6455b594","timezone":"<-03>3","online":true}'
+I (20178184) [DM]: Setting assumed name for device 94:B5:55:64:57:2C: Moriarty
+I (20178194) gateway: Local 'Control/request' (8 bytes) from 94:B5:55:64:57:2C
+I (20178204) gateway: Local 'Moriarty/status' (84 bytes) from 94:B5:55:64:57:2C [retained]
+I (20178204) gateway: Device Moriarty reports status '{"name":"Moriarty","hardware":"Esp32-nm-6455b594","timezone":"<-03>3","online":true}'
+I (20178224) [DM]: Setting assumed name for device 94:B5:55:64:57:2C: Moriarty
+I (20178224) gateway: Local 'Moriarty/manifest' (28 bytes) from 94:B5:55:64:57:2C [retained]
+I (20178234) gateway: Local 'Moriarty/manifest/msgpack' (4 bytes) from 94:B5:55:64:57:2C [retained]
+I (20178274) gateway: Local 'Moriarty/manifest/consume' (1907 bytes) from 94:B5:55:64:57:2C [retained]
+I (20178284) gateway: Local 'Moriarty/manifest/consume/msgpack' (448 bytes) from 94:B5:55:64:57:2C [retained]
+I (20178314) gateway: Local 'Moriarty/info' (660 bytes) from 94:B5:55:64:57:2C [retained]
+I (20178424) gateway: Local 'Moriarty/hardware' (4350 bytes) from 94:B5:55:64:57:2C [retained]
+I (20178434) gateway: Local 'Moriarty/telemetry/system' (105 bytes) from 94:B5:55:64:57:2C [retained]
+I (20178444) gateway: Local 'Moriarty/telemetry/network' (232 bytes) from 94:B5:55:64:57:2C [retained]
+I (20178444) gateway: Local 'Moriarty/telemetry/heartbeat' (32 bytes) from 94:B5:55:64:57:2C
+I (20181454) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20186464) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20188884) gateway: Local 'Minicroft-C3/telemetry/system' (110 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20189094) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (20189614) gateway: Local 'Moriarty/telemetry/heartbeat' (33 bytes) from 94:B5:55:64:57:2C
+I (20191454) gateway: Local 'Minicroft-C3/resource/temperature/state' (7 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20196454) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20201454) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20204094) gateway: Local 'Minicroft-C3/telemetry/heartbeat' (39 bytes) from 44:BD:8D:27:11:D8
+I (20204614) gateway: Local 'Moriarty/telemetry/heartbeat' (33 bytes) from 94:B5:55:64:57:2C
+I (20206464) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (20208054) Serial: Received: reboot
+I (20208054) Serial: Rebooting...
+I (20208054) wifi:flush txq
+I (20208054) wifi:stop sw txq
+I (20208054) wifi:lmac stop hw txq
+���ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x4037d968
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xd24
+load:0x403cb700,len:0x2ef0
+entry 0x403c891c
+I (29) boot: ESP-IDF 5.5.4 2nd stage bootloader
+I (29) boot: compile time Oct  1 2026 14:40:58
+I (29) boot: Multicore bootloader
+I (29) boot: chip revision: v0.2
+I (32) boot: efuse block revision: v1.4
+I (36) boot.esp32s3: Boot SPI Speed : 80MHz
+I (39) boot.esp32s3: SPI Mode       : DIO
+I (43) boot.esp32s3: SPI Flash Size : 16MB
+I (47) boot: Enabling RNG early entropy source...
+I (52) boot: Partition Table:
+I (54) boot: ## Label            Usage          Type ST Offset   Length
+I (60) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (67) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (73) boot:  2 factory          factory app      00 00 00010000 00400000
+I (80) boot: End of partition table
+I (83) esp_image: segment 0: paddr=00010020 vaddr=3c0d0020 size=282e4h (164580) map
+I (120) esp_image: segment 1: paddr=0003830c vaddr=3fc9c600 size=05278h ( 21112) load
+I (124) esp_image: segment 2: paddr=0003d58c vaddr=40374000 size=02a8ch ( 10892) load
+I (127) esp_image: segment 3: paddr=00040020 vaddr=42000020 size=c71fch (815612) map
+I (275) esp_image: segment 4: paddr=00107224 vaddr=40376a8c size=15a88h ( 88712) load
+I (294) esp_image: segment 5: paddr=0011ccb4 vaddr=50000000 size=00020h (    32) load
+I (304) boot: Loaded app from partition at offset 0x10000
+I (304) boot: Disabling RNG early entropy source...
+I (314) cpu_start: Multicore app
+I (323) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (324) cpu_start: Pro cpu start user code
+I (324) cpu_start: cpu freq: 160000000 Hz
+I (325) app_init: Application information:
+I (329) app_init: Project name:     S3
+I (333) app_init: App version:      1732bdb-dirty
+I (337) app_init: Compile time:     Oct  1 2026 14:39:51
+I (342) app_init: ELF file SHA256:  66cee7803...
+I (346) app_init: ESP-IDF:          5.5.4
+I (350) efuse_init: Min chip rev:     v0.0
+I (354) efuse_init: Max chip rev:     v0.99 
+I (358) efuse_init: Chip rev:         v0.2
+I (362) heap_init: Initializing. RAM available for dynamic allocation:
+I (368) heap_init: At 3FCA6870 len 00042EA0 (267 KiB): RAM
+I (373) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (378) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (384) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (390) spi_flash: detected chip: boya
+I (392) spi_flash: flash io: dio
+I (396) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (402) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (409) main_task: Started on CPU0
+I (449) main_task: Calling app_main()
+Hello world
+E (449) temperature_sensor: temperature_sensor_choose_best_range(82): Out of testing range
+E (449) temperature_sensor: temperature_sensor_install(172): Cannot select the correct range
+E (459) chip_temp: temperature_sensor_install failed: ESP_ERR_INVALID_ARG
+E (469) chip_temp: Failed to initialize chip temperature sensor
+I (489) pp: pp rom version: e7ae62f
+I (489) net80211: net80211 rom version: e7ae62f
+I (499) wifi:wifi driver task: 3fcb1b18, prio:23, stack:6656, core=0
+I (509) wifi:wifi firmware version: 0947e8b
+I (509) wifi:wifi certification version: v7.0
+I (509) wifi:config NVS flash: enabled
+I (509) wifi:config nano formatting: disabled
+I (509) wifi:Init data frame dynamic rx buffer num: 32
+I (519) wifi:Init static rx mgmt buffer num: 5
+I (519) wifi:Init management short buffer num: 32
+I (519) wifi:Init dynamic tx buffer num: 32
+I (529) wifi:Init static tx FG buffer num: 2
+I (529) wifi:Init static rx buffer size: 1600
+I (539) wifi:Init static rx buffer num: 10
+I (539) wifi:Init dynamic rx buffer num: 32
+I (539) wifi_init: rx ba win: 6
+I (549) wifi_init: accept mbox: 6
+I (549) wifi_init: tcpip mbox: 32
+I (549) wifi_init: udp mbox: 6
+I (559) wifi_init: tcp mbox: 6
+I (559) wifi_init: tcp tx win: 5760
+I (559) wifi_init: tcp rx win: 5760
+I (559) wifi_init: tcp mss: 1440
+I (569) wifi_init: WiFi IRAM OP enabled
+I (569) wifi_init: WiFi RX IRAM OP enabled
+I (579) phy_init: phy_version 711,97bcf0a2,Aug 25 2025,19:04:10
+I (619) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(0)
+I (629) wifi:mode : sta (14:c1:9f:2d:84:80)
+I (629) wifi:enable tsf
+I (639) espWifi: Connecting to SSID: Carvalho Residence
+I (649) wifi:new:<9,1>, old:<1,0>, ap:<255,255>, sta:<9,1>, prof:1, snd_ch_cfg:0x0
+I (649) wifi:state: init -> auth (0xb0)
+I (679) wifi:state: auth -> assoc (0x0)
+I (689) wifi:state: assoc -> run (0x10)
+I (699) wifi:Set ps type: 0, coexist: 0
+
+I (699) ESPNOW: espnow [version: 2.0] init
+I (699) espBroker: ESP-NOW up on 14:C1:9F:2D:84:80 (protocol 0, heartbeat 15000 ms)
+I (799) wifi:connected with Carvalho Residence, aid = 9, channel 9, 40U, bssid = 98:7e:ca:b4:35:2f
+I (799) wifi:security: WPA2-PSK, phy: bgn, rssi: -69, cipher(pairwise:0x3, group:0x3), pmf:0
+I (809) wifi:pm start, type: 0
+
+I (809) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (819) wifi:set rx beacon pti, rx_bcn_pti: 0, bcn_timeout: 25000, mt_pti: 0, mt_time: 10000
+I (859) wifi:AP's beacon interval = 102400 us, DTIM period = 3
+I (1139) wifi:<ba-add>idx:0 (ifx:0, 98:7e:ca:b4:35:2f), tid:0, ssn:2, winSize:64
+I (2379) esp_netif_handlers: sta ip: 10.10.3.10, mask: 255.255.255.0, gw: 10.10.3.1
+I (2379) espWifi: Got IP: 10.10.3.10
+I (2379) espWifi: Connected to SSID: Carvalho Residence
+I (2379) mDNS: Available at nightmare-gateway.local
+I (2389) timeSync: Waiting for NTP time sync (<-03>3)...
+I (2389) web_server: HTTP server listening on port 80
+I (2399) gateway: Network up, starting MQTT
+I (2399) espMqtt: Connecting to 64000315ae8845b9b763275cb3d59b8c.s2.eu.hivemq.cloud:8883
+I (3399) timeSync: Time synced: 2026-10-01 21:42:40
+I (4079) espMqtt: Connected to broker
+I (4319) espMqtt: Subscribed, msg_id=64897
+I (4319) gateway: MQTT 'Adler/resource/ac_known/state' (5 bytes) from  [retained]
+I (4329) gateway: MQTT 'Esp32-nm-6f08b764/status' (74 bytes) from  [retained]
+I (4329) gateway: MQTT 'Mary/resource/ac_fan/state' (1 bytes) from  [retained]
+I (4329) gateway: MQTT 'Mary/resource/ac_target/state' (3 bytes) from  [retained]
+I (4339) gateway: MQTT 'Esp32-nm-6ca172e0/info' (662 bytes) from  [retained]
+I (4349) gateway: MQTT 'Mary/resource/ac_door_paused/state' (5 bytes) from  [retained]
+I (4359) gateway: MQTT 'Sherlock/resource/Board Voltage/state' (9 bytes) from  [retained]
+I (4359) gateway: MQTT 'Mary/resource/ac_door_state/state' (1 bytes) from  [retained]
+I (5309) gateway: MQTT 'Esp32-nm-6ca172e0/hardware' (9308 bytes) from  [retained]
+I (5309) gateway: MQTT 'Sherlock/manifest/msgpack' (193 bytes) from  [retained]
+I (6069) gateway: MQTT 'Sherlock/manifest' (1179 bytes) from  [retained]
+I (6069) gateway: MQTT 'Adler/resource/ac_temperature/state' (2 bytes) from  [retained]
+I (6079) gateway: MQTT 'Mary/resource/ac_known/state' (5 bytes) from  [retained]
+I (6079) gateway: MQTT 'Adler/resource/ac_target/state' (3 bytes) from  [retained]
+I (6089) gateway: MQTT 'Turing/status' (7 bytes) from  [retained]
+I (6089) gateway: MQTT 'Sherlock/resource/temperature/state' (6 bytes) from  [retained]
+I (6099) gateway: MQTT 'Adler/resource/ac_fan/state' (1 bytes) from  [retained]
+I (6109) gateway: MQTT 'Moriarty/manifest' (28 bytes) from  [retained]
+I (6119) gateway: MQTT 'Minicroft-C3/manifest/msgpack' (103 bytes) from  [retained]
+I (6129) gateway: MQTT 'Minicroft-C3/resource/temperature/state' (7 bytes) from  [retained]
+I (6129) gateway: MQTT 'Minicroft-C3/manifest/consume/msgpack' (5 bytes) from  [retained]
+I (6139) gateway: MQTT 'Moriarty/manifest/consume/msgpack' (448 bytes) from  [retained]
+I (6149) gateway: MQTT 'Sherlock/resource/led:color/state' (5 bytes) from  [retained]
+I (6149) gateway: MQTT 'Adler/resource/ac_status/state' (175 bytes) from  [retained]
+I (6159) gateway: MQTT 'Adler/resource/ac_door_paused/state' (5 bytes) from  [retained]
+I (6169) gateway: MQTT 'Sherlock/resource/drawer_2/state' (4 bytes) from  [retained]
+I (6179) gateway: MQTT 'Mary/hardware' (409 bytes) from  [retained]
+I (6179) gateway: MQTT 'Adler/resource/ac_turbo/state' (5 bytes) from  [retained]
+I (6189) gateway: MQTT 'Sherlock/resource/dht_temperature/state' (4 bytes) from  [retained]
+I (6199) gateway: MQTT 'Sherlock/manifest/consume' (40 bytes) from  [retained]
+I (6209) gateway: MQTT 'Sherlock/telemetry/network' (115 bytes) from  [retained]
+I (6209) gateway: MQTT 'Adler/telemetry/network' (208 bytes) from  [retained]
+I (6219) gateway: MQTT 'Mary/manifest/consume/msgpack' (52 bytes) from  [retained]
+I (6229) gateway: MQTT 'Mary/resource/ac_sleep_deadline/state' (1 bytes) from  [retained]
+I (6229) gateway: MQTT 'Adler/resource/ac_mode/state' (1 bytes) from  [retained]
+I (6239) gateway: MQTT 'Adler/resource/ac_door_state/state' (1 bytes) from  [retained]
+I (6329) gateway: MQTT 'Mary/manifest' (1704 bytes) from  [retained]
+I (6339) gateway: MQTT 'Sherlock/status' (84 bytes) from  [retained]
+I (6339) gateway: MQTT 'Sherlock/resource/drawer_1/state' (4 bytes) from  [retained]
+I (6339) gateway: MQTT 'Adler/resource/ac_led/state' (5 bytes) from  [retained]
+I (6349) gateway: MQTT 'Mary/resource/ac_mode/state' (1 bytes) from  [retained]
+I (6549) gateway: MQTT 'Adler/manifest' (2009 bytes) from  [retained]
+I (6549) gateway: MQTT 'Mary/manifest/msgpack' (376 bytes) from  [retained]
+I (6559) gateway: MQTT 'Mary/status' (80 bytes) from  [retained]
+I (6789) gateway: MQTT 'Adler/hardware' (9308 bytes) from  [retained]
+I (6799) gateway: MQTT 'Mary/telemetry/network' (114 bytes) from  [retained]
+I (6799) gateway: MQTT 'Mary/resource/ac_sleep_in/state' (5 bytes) from  [retained]
+I (6809) gateway: MQTT 'Mary/resource/ac_state/state' (1 bytes) from  [retained]
+I (6979) gateway: MQTT 'Adler/resource/ac_sleep_deadline/state' (1 bytes) from  [retained]
+I (6979) gateway: MQTT 'Esp32-nm-6f08b764/telemetry/system' (106 bytes) from  [retained]
+I (6989) gateway: MQTT 'Esp32-nm-6ca172e0/telemetry/system' (107 bytes) from  [retained]
+I (6999) gateway: MQTT 'Mary/info' (631 bytes) from  [retained]
+I (6999) gateway: MQTT 'Adler/manifest/consume' (143 bytes) from  [retained]
+I (7009) gateway: MQTT 'Adler/status' (79 bytes) from  [retained]
+I (7679) gateway: MQTT 'Adler/resource/ac_power/state' (5 bytes) from  [retained]
+I (7689) gateway: MQTT 'Adler/resource/ac_sleep_in/state' (5 bytes) from  [retained]
+I (7689) gateway: MQTT 'Mary/resource/ac_turbo/state' (5 bytes) from  [retained]
+I (7699) gateway: MQTT 'Adler/resource/temperature/state' (7 bytes) from  [retained]
+I (7709) gateway: MQTT 'Sherlock/telemetry/system' (110 bytes) from  [retained]
+I (7709) gateway: MQTT 'Sherlock/resource/led:power/state' (5 bytes) from  [retained]
+I (7719) gateway: MQTT 'Adler/resource/ac_state/state' (1 bytes) from  [retained]
+I (7729) gateway: MQTT 'Minicroft-S3/status' (7 bytes) from  [retained]
+I (7729) gateway: MQTT 'Mary/telemetry/system' (111 bytes) from  [retained]
+I (7739) gateway: MQTT 'Esp32-nm-6ca172e0/telemetry/network' (208 bytes) from  [retained]
+I (7749) gateway: MQTT 'Sherlock/manifest/consume/msgpack' (5 bytes) from  [retained]
+I (7759) gateway: MQTT 'Esp32-nm-6f08b764/telemetry/network' (96 bytes) from  [retained]
+I (7769) gateway: MQTT 'Sherlock/hardware' (3682 bytes) from  [retained]
+I (7769) gateway: MQTT 'Adler/telemetry/system' (106 bytes) from  [retained]
+I (7779) gateway: MQTT 'Esp32-nm-6f08b764/resources' (257 bytes) from  [retained]
+I (7779) gateway: MQTT 'Mary/resource/ac_temperature/state' (2 bytes) from  [retained]
+I (7789) gateway: MQTT 'Mary/resource/ac_power/state' (5 bytes) from  [retained]
+I (7979) gateway: MQTT 'Adler/manifest/msgpack' (463 bytes) from  [retained]
+I (7979) gateway: MQTT 'Adler/manifest/consume/msgpack' (17 bytes) from  [retained]
+I (7989) gateway: MQTT 'Mary/resource/ac_status/state' (172 bytes) from  [retained]
+I (7989) gateway: MQTT 'Sherlock/resource/dht_humidity/state' (2 bytes) from  [retained]
+I (7999) gateway: MQTT 'Esp32-nm-6f08b764/info' (1101 bytes) from  [retained]
+I (8009) gateway: MQTT 'Mary/resource/ac_led/state' (5 bytes) from  [retained]
+I (8019) gateway: MQTT 'Sherlock/resource/led:brightness/state' (3 bytes) from  [retained]
+I (8019) gateway: MQTT 'Mary/manifest/consume' (268 bytes) from  [retained]
+I (8029) gateway: MQTT 'Adler/info' (651 bytes) from  [retained]
+I (8039) gateway: MQTT 'Sherlock/info' (646 bytes) from  [retained]
+I (8039) gateway: MQTT 'Minicroft-C3/resource/light/state' (5 bytes) from  [retained]
+I (8049) gateway: MQTT 'Adler/resource/temperature/state' (7 bytes) from  [retained]
+I (8059) gateway: MQTT 'tester/fan' (1 bytes) from  [retained]
+I (8059) gateway: MQTT 'Adler/resource/temperature/state' (7 bytes) from  [retained]
+                                                              rom  [retained]
+I (8959) gateway: MQTT 'Sherlock/telemetry/heartbeat' (41 bytes) from 
+I (8969) gateway: MQTT 'Minicroft-C3/manifest/consume' (40 bytes) from  [retained]
+I (8969) gateway: MQTT 'Moriarty/info' (660 bytes) from  [retained]
+I (8979) gateway: MQTT 'Minicroft-C3/resource/door/state' (5 bytes) from  [retained]
+I (8979) gateway: MQTT 'Minicroft-C3/telemetry/system' (108 bytes) from  [retained]
+I (8989) gateway: MQTT 'Minicroft-C3/manifest' (455 bytes) from  [retained]
+I (8999) gateway: MQTT 'Minicroft-C3/info' (663 bytes) from  [retained]
+I (9439) gateway: MQTT 'Moriarty/hardware' (4350 bytes) from  [retained]
+I (9439) gateway: MQTT 'tester/compressor' (1 bytes) from  [retained]
+I (9449) gateway: MQTT 'Moriarty/manifest/msgpack' (4 bytes) from  [retained]
+I (9449) gateway: MQTT 'Moriarty/status' (84 bytes) from  [retained]
+I (9459) gateway: MQTT 'Moriarty/manifest/consume' (1907 bytes) from  [retained]
+I (9469) gateway: MQTT 'Minicroft-C3/telemetry/network' (230 bytes) from  [retained]
+I (9469) gateway: MQTT 'Moriarty/telemetry/network' (231 bytes) from  [retained]
+I (9479) gateway: MQTT 'Minicroft-C3/status' (88 bytes) from  [retained]
+I (9489) gateway: MQTT 'Moriarty/telemetry/system' (109 bytes) from  [retained]
+I (9919) gateway: MQTT 'Sherlock/resource/Board Voltage/state' (9 bytes) from  [retained]
+I (9919) gateway: MQTT 'Adler/resource/temperature/state' (7 bytes) from  [retained]
+I (11349) gateway: MQTT 'Sherlock/resource/Board Voltage/state' (8 bytes) from  [retained]
+I (12749) gateway: MQTT 'Sherlock/resource/dht_temperature/state' (2 bytes) from  [retained]
+I (12839) gateway: MQTT 'Adler/telemetry/heartbeat' (33 bytes) from 
+I (13579) gateway: MQTT 'Adler/resource/temperature/state' (7 bytes) from  [retained]
+I (14809) gateway: MQTT 'Sherlock/resource/dht_humidity/state' (2 bytes) from  [retained]
+I (16369) gateway: MQTT 'Sherlock/resource/Board Voltage/state' (9 bytes) from  [retained]
+I (17739) gateway: MQTT 'Sherlock/resource/dht_temperature/state' (4 bytes) from  [retained]
+I (18579) gateway: MQTT 'Adler/resource/temperature/state' (7 bytes) from  [retained]
+I (19919) gateway: MQTT 'Sherlock/resource/dht_humidity/state' (2 bytes) from  [retained]
+I (21759) gateway: MQTT 'Sherlock/telemetry/heartbeat' (41 bytes) from 
+I (21769) gateway: MQTT 'Sherlock/resource/Board Voltage/state' (8 bytes) from  [retained]
+I (23589) gateway: MQTT 'Adler/resource/temperature/state' (7 bytes) from  [retained]
+I (26389) gateway: MQTT 'Sherlock/resource/Board Voltage/state' (9 bytes) from  [retained]
+I (27829) gateway: MQTT 'Adler/telemetry/heartbeat' (33 bytes) from 
+I (28589) gateway: MQTT 'Adler/resource/temperature/state' (7 bytes) from  [retained]
+I (31399) gateway: MQTT 'Sherlock/resource/Board Voltage/state' (9 bytes) from  [retained]
+I (33569) gateway: MQTT 'Adler/resource/temperature/state' (7 bytes) from  [retained]
+I (33779) gateway: MQTT 'Minicroft-C3/console/controlled/8b3b21492beedbd0/in' (11 bytes) from 
+I (33989) gateway: MQTT 'Minicroft-C3/console/controlled/88b28940a2c66e1c/in' (11 bytes) from 
+I (36409) gateway: MQTT 'Sherlock/telemetry/heartbeat' (41 bytes) from 
+I (36819) gateway: MQTT 'Sherlock/resource/Board Voltage/state' (9 bytes) from  [retained]
+I (38379) gateway: MQTT 'Minicroft-C3/resource/light/set' (4 bytes) from 
+I (38559) gateway: MQTT 'Adler/resource/temperature/state' (7 bytes) from  [retained]
+I (41439) gateway: MQTT 'Sherlock/resource/Board Voltage/state' (8 bytes) from  [retained]
+I (42849) gateway: MQTT 'Adler/telemetry/system' (106 bytes) from  [retained]
+I (43299) gateway: MQTT 'Adler/telemetry/heartbeat' (33 bytes) from 
+I (43619) gateway: MQTT 'Adler/resource/temperature/state' (7 bytes) from  [retained]
+I (45239) espBroker: CONNECT from 44:BD:8D:27:11:D8, challenged
+I (45249) espBroker: 44:BD:8D:27:11:D8 authenticated as session 1, securing
+I (45249) espBroker: Session 1 (44:BD:8D:27:11:D8) secured and connected
+I (45259) gateway: Local 'Minicroft-C3/console/out' (9 bytes) from 44:BD:8D:27:11:D8
+I (45259) espBroker: 44:BD:8D:27:11:D8 subscribes to 'Minicroft-C3/console/in'
+I (45269) espBroker: 44:BD:8D:27:11:D8 subscribes to 'Minicroft-C3/console/controlled/+/in'
+I (45279) espBroker: 44:BD:8D:27:11:D8 subscribes to 'all/console/in'
+I (45279) espBroker: 44:BD:8D:27:11:D8 subscribes to 'Control/time'
+I (45289) espBroker: 44:BD:8D:27:11:D8 subscribes to 'Minicroft-C3/resource/light/set'
+I (45299) espBroker: 44:BD:8D:27:11:D8 subscribes to 'Minicroft-C3/resource/toggle_light/invoke'
+I (45299) espBroker: 44:BD:8D:27:11:D8 subscribes to 'Minicroft-C3/resource/ioxpander:state/set'
+I (45309) espBroker: 44:BD:8D:27:11:D8 sets last will on 'Minicroft-C3/status'
+I (45319) gateway: Local 'Minicroft-C3/status' (88 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (45329) gateway: Device Minicroft-C3 reports status '{"name":"Minicroft-C3","hardware":"Esp32-nm-278dbd44","timezone":"<-03>3","online":true}'
+I (45339) [DM]: Setting assumed name for device 44:BD:8D:27:11:D8: Minicroft-C3
+I (45349) gateway: Local 'Minicroft-C3/manifest' (455 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (45349) gateway: Local 'Minicroft-C3/manifest/msgpack' (103 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (45359) gateway: Local 'Minicroft-C3/manifest/consume' (40 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (45369) gateway: Local 'Minicroft-C3/manifest/consume/msgpack' (5 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (45379) gateway: Local 'Minicroft-C3/resource/temperature/state' (6 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (45389) gateway: Local 'Minicroft-C3/resource/light/state' (4 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (45399) gateway: Local 'Minicroft-C3/resource/door/state' (5 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (45409) gateway: Local 'Minicroft-C3/info' (663 bytes) from 44:BD:8D:27:11:D8 [retained]
+I (45779) gateway: Local 'Minicroft-C3/hardware' (18117 bytes) from 44:BD:8D:27:11:D8 [retained]
+
+abort() was called at PC 0x420a31f6 on core 1
+
+
+Backtrace: 0x4037d7e9:0x3fcebd60 0x4037d7b1:0x3fcebd80 0x40385e35:0x3fcebda0 0x420a31f6:0x3fcebe10 0x4209b7fd:0x3fcebe30 0x42003cbf:0x3fcebe50 0x42003d69:0x3fcebe70 0x42003f66:0x3fcebe90 0x42003f90:0x3fcebeb0 0x42003fbd:0x3fcebed0 0x42008587:0x3fcebf00 0x420085df:0x3fcebf50 0x420055db:0x3fcebff0 0x420058ce:0x3fcec060 0x42005a85:0x3fcec140 0x42005b17:0x3fcec290 0x42008774:0x3fcec3d0 0x4037e7cd:0x3fcec3f0
+
+
+
+
+ELF file SHA256: 66cee7803
+
+Rebooting...
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x4037a97e
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xd24
+load:0x403cb700,len:0x2ef0
+entry 0x403c891c
+I (29) boot: ESP-IDF 5.5.4 2nd stage bootloader
+I (29) boot: compile time Oct  1 2026 14:40:58
+I (29) boot: Multicore bootloader
+I (29) boot: chip revision: v0.2
+I (32) boot: efuse block revision: v1.4
+I (36) boot.esp32s3: Boot SPI Speed : 80MHz
+I (39) boot.esp32s3: SPI Mode       : DIO
+I (43) boot.esp32s3: SPI Flash Size : 16MB
+I (47) boot: Enabling RNG early entropy source...
+I (52) boot: Partition Table:
+I (54) boot: ## Label            Usage          Type ST Offset   Length
+I (60) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (67) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (73) boot:  2 factory          factory app      00 00 00010000 00400000
+I (80) boot: End of partition table
+I (83) esp_image: segment 0: paddr=00010020 vaddr=3c0d0020 size=282e4h (164580) map
+I (120) esp_image: segment 1: paddr=0003830c vaddr=3fc9c600 size=05278h ( 21112) load
+I (125) esp_image: segment 2: paddr=0003d58c vaddr=40374000 size=02a8ch ( 10892) load
+I (127) esp_image: segment 3: paddr=00040020 vaddr=42000020 size=c71fch (815612) map
+I (276) esp_image: segment 4: paddr=00107224 vaddr=40376a8c size=15a88h ( 88712) load
+I (295) esp_image: segment 5: paddr=0011ccb4 vaddr=50000000 size=00020h (    32) load
+I (305) boot: Loaded app from partition at offset 0x10000
+I (305) boot: Disabling RNG early entropy source...
+I (315) cpu_start: Multicore app
+I (324) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (325) cpu_start: Pro cpu start user code
+I (325) cpu_start: cpu freq: 160000000 Hz
+I (326) app_init: Application information:
+I (330) app_init: Project name:     S3
+I (333) app_init: App version:      1732bdb-dirty
+I (338) app_init: Compile time:     Oct  1 2026 14:39:51
+I (343) app_init: ELF file SHA256:  66cee7803...
+I (347) app_init: ESP-IDF:          5.5.4
+I (351) efuse_init: Min chip rev:     v0.0
+I (355) efuse_init: Max chip rev:     v0.99 
+I (359) efuse_init: Chip rev:         v0.2
+I (363) heap_init: Initializing. RAM available for dynamic allocation:
+I (369) heap_init: At 3FCA6870 len 00042EA0 (267 KiB): RAM
+I (374) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (379) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (384) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (391) spi_flash: detected chip: boya
+I (393) spi_flash: flash io: dio
+I (397) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (403) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (409) main_task: Started on CPU0
+I (449) main_task: Calling app_main()
+Hello world
+E (449) temperature_sensor: temperature_sensor_choose_best_range(82): Out of testing range
+E (449) temperature_sensor: temperature_sensor_install(172): Cannot select the correct range
+E (459) chip_temp: temperature_sensor_install failed: ESP_ERR_INVALID_ARG
+E (469) chip_temp: Failed to initialize chip temperature sensor
+I (489) pp: pp rom version: e7ae62f
+I (489) net80211: net80211 rom version: e7ae62f
+I (499) wifi:wifi driver task: 3fcb1a98, prio:23, stack:6656, core=0
+I (509) wifi:wifi firmware version: 0947e8b
+I (509) wifi:wifi certification version: v7.0
+I (509) wifi:config NVS flash: enabled
+I (509) wifi:config nano formatting: disabled
+I (509) wifi:Init data frame dynamic rx buffer num: 32
+I (519) wifi:Init static rx mgmt buffer num: 5
+I (519) wifi:Init management short buffer num: 32
+I (519) wifi:Init dynamic tx buffer num: 32
+I (529) wifi:Init static tx FG buffer num: 2
+I (529) wifi:Init static rx buffer size: 1600
+I (539) wifi:Init static rx buffer num: 10
+I (539) wifi:Init dynamic rx buffer num: 32
+I (539) wifi_init: rx ba win: 6
+I (549) wifi_init: accept mbox: 6
+I (549) wifi_init: tcpip mbox: 32
+I (549) wifi_init: udp mbox: 6
+I (559) wifi_init: tcp mbox: 6
+I (559) wifi_init: tcp tx win: 5760
+I (559) wifi_init: tcp rx win: 5760
+I (559) wifi_init: tcp mss: 1440
+I (569) wifi_init: WiFi IRAM OP enabled
+I (569) wifi_init: WiFi RX IRAM OP enabled
+I (579) phy_init: phy_version 711,97bcf0a2,Aug 25 2025,19:04:10
+I (619) wifi:mode : sta (14:c1:9f:2d:84:80)
+I (619) wifi:enable tsf
+I (619) espWifi: Connecting to SSID: Carvalho Residence
+I (629) wifi:new:<9,1>, old:<1,0>, ap:<255,255>, sta:<9,1>, prof:1, snd_ch_cfg:0x0
+I (629) wifi:state: init -> auth (0xb0)
+I (649) wifi:state: auth -> assoc (0x0)
+I (659) wifi:state: assoc -> run (0x10)
+I (699) wifi:Set ps type: 0, coexist: 0
+
+I (699) ESPNOW: espnow [version: 2.0] init
+I (699) espBroker: ESP-NOW up on 14:C1:9F:2D:84:80 (protocol 0, heartbeat 15000 ms)
+I (769) wifi:connected with Carvalho Residence, aid = 9, channel 9, 40U, bssid = 98:7e:ca:b4:35:2f
+I (769) wifi:security: WPA2-PSK, phy: bgn, rssi: -67, cipher(pairwise:0x3, group:0x3), pmf:0
+I (779) wifi:pm start, type: 0
+
+I (779) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (789) wifi:set rx beacon pti, rx_bcn_pti: 0, bcn_timeout: 25000, mt_pti: 0, mt_time: 10000
+I (849) wifi:AP's beacon interval = 102400 us, DTIM period = 3
+I (969) wifi:<ba-add>idx:0 (ifx:0, 98:7e:ca:b4:35:2f), tid:0, ssn:3, winSize:64
+I (2249) esp_netif_handlers: sta ip: 10.10.3.10, mask: 255.255.255.0, gw: 10.10.3.1
+I (2249) espWifi: Got IP: 10.10.3.10
+I (2249) gateway: Network up, starting MQTT
+I (2249) espMqtt: Connecting to 64000315ae8845b9b763275cb3d59b8c.s2.eu.hivemq.cloud:8883
+I (2249) mDNS: Available at nightmare-gateway.local
+I (2249) espWifi: Connected to SSID: Carvalho Residence
+I (2259) web_server: HTTP server listening on port 80
+I (2269) timeSync: Waiting for NTP time sync (<-03>3)...
+I (3919) espMqtt: Connected to broker
+I (4139) espMqtt: Subscribed, msg_id=46073
+I (4159) gateway: MQTT 'Adler/resource/ac_known/state' (5 bytes) from  [retained]
+I (4159) gateway: MQTT 'Esp32-nm-6f08b764/status' (74 bytes) from  [retained]
+I (4159) gateway: MQTT 'Mary/resource/ac_fan/state' (1 bytes) from  [retained]
+I (4169) gateway: MQTT 'Mary/resource/ac_target/state' (3 bytes) from  [retained]
+I (4179) gateway: MQTT 'Esp32-nm-6ca172e0/info' (662 bytes) from  [retained]
+I (4179) gateway: MQTT 'Mary/resource/ac_door_paused/state' (5 bytes) from  [retained]
+I (4189) gateway: MQTT 'Sherlock/resource/Board Voltage/state' (9 bytes) from  [retained]
+I (4199) gateway: MQTT 'Mary/resource/ac_door_state/state' (1 bytes) from  [retained]
+I (4609) gateway: MQTT 'Esp32-nm-6ca172e0/hardware' (9308 bytes) from  [retained]
+I (4609) gateway: MQTT 'Sherlock/manifest/msgpack' (193 bytes) from  [retained]
+I (4639) gateway: MQTT 'Sherlock/manifest' (1179 bytes) from  [retained]
+I (4639) gateway: MQTT 'Adler/resource/ac_temperature/state' (2 bytes) from  [retained]
+I (4649) gateway: MQTT 'Mary/resource/ac_known/state' (5 bytes) from  [retained]
+I (4649) gateway: MQTT 'Adler/resource/ac_target/state' (3 bytes) from  [retained]
+I (4659) gateway: MQTT 'Turing/status' (7 bytes) from  [retained]
+I (4669) gateway: MQTT 'Sherlock/resource/temperature/state' (6 bytes) from  [retained]
+I (4669) gateway: MQTT 'Adler/resource/ac_fan/state' (1 bytes) from  [retained]
+I (4679) gateway: MQTT 'Moriarty/manifest' (28 bytes) from  [retained]
+I (4689) gateway: MQTT 'Minicroft-C3/manifest/msgpack' (103 bytes) from  [retained]
+I (4699) gateway: MQTT 'Minicroft-C3/resource/temperature/state' (6 bytes) from  [retained]
+I (4699) gateway: MQTT 'Minicroft-C3/manifest/consume/msgpack' (5 bytes) from  [retained]
+I (4709) gateway: MQTT 'Moriarty/manifest/consume/msgpack' (448 bytes) from  [retained]
+I (4719) gateway: MQTT 'Sherlock/resource/led:color/state' (5 bytes) from  [retained]
+I (4729) gateway: MQTT 'Adler/resource/ac_status/state' (175 bytes) from  [retained]
+I (4729) gateway: MQTT 'Adler/resource/ac_door_paused/state' (5 bytes) from  [retained]
+I (4739) gateway: MQTT 'Sherlock/resource/drawer_2/state' (4 bytes) from  [retained]
+I (4749) gateway: MQTT 'Mary/hardware' (409 bytes) from  [retained]
+I (4749) gateway: MQTT 'Adler/resource/ac_turbo/state' (5 bytes) from  [retained]
+I (4759) gateway: MQTT 'Sherlock/resource/dht_temperature/state' (2 bytes) from  [retained]
+I (4769) gateway: MQTT 'Sherlock/manifest/consume' (40 bytes) from  [retained]
+I (4779) gateway: MQTT 'Sherlock/telemetry/network' (115 bytes) from  [retained]
+I (4779) gateway: MQTT 'Adler/telemetry/network' (208 bytes) from  [retained]
+I (4789) gateway: MQTT 'Mary/manifest/consume/msgpack' (52 bytes) from  [retained]
+I (4799) gateway: MQTT 'Mary/resource/ac_sleep_deadline/state' (1 bytes) from  [retained]
+I (4809) gateway: MQTT 'Adler/resource/ac_mode/state' (1 bytes) from  [retained]
+I (4809) gateway: MQTT 'Adler/resource/ac_door_state/state' (1 bytes) from  [retained]

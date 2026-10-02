@@ -3,6 +3,7 @@
 #include "Auth.h"
 #include "Reassembly.h"
 #include "NightmareGateway/NightMare/Topic.h"
+#include "NightmareGateway/GatewayStats.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
@@ -13,6 +14,7 @@
 #include <string.h>
 #include <algorithm>
 #include <atomic>
+#include <utility>
 #include <vector>
 
 static const char *TAG = "espBroker";
@@ -55,8 +57,10 @@ static SemaphoreHandle_t s_sendDone = NULL;
 static espDeviceManager s_devices(SESSION_TIMEOUT_MS);
 static ReassemblyTable s_reassembly;
 static uint16_t s_nextMessageId = 1;
-static uint64_t s_lastBeaconMs = 0;
-static bool s_beaconActive = false;
+static std::atomic<uint64_t> s_lastBeaconMs{0};
+static std::atomic<bool> s_beaconActive{false};
+static std::atomic<uint8_t> s_deviceCount{0};
+static std::atomic<uint8_t> s_subscriberCount{0};
 static MacAddress s_ownMac;
 // The task that runs espBroker_process(), woken on every received packet so
 // the queue drains now rather than at its next scheduled tick.
@@ -66,6 +70,15 @@ static TaskHandle_t s_processTask = NULL;
 static std::atomic<uint32_t> s_rxDropped{0};
 static uint32_t s_invalidFrames = 0;
 static uint32_t s_ignoredFrames = 0;
+
+// What the web server may read: the device table belongs to the gateway task,
+// so it publishes a copy under this lock instead of letting others walk it.
+static SemaphoreHandle_t s_snapshotLock = NULL;
+static std::vector<EspBrokerDeviceInfo> s_snapshot;
+static uint64_t s_snapshotAtMs = 0;
+#define SNAPSHOT_INTERVAL_MS 500
+// A session that has missed two heartbeats is on its way to being timed out.
+#define DISCONNECT_CANDIDATE_MS (2 * HEARTBEAT_MS)
 
 static uint64_t nowMs(void)
 {
@@ -122,10 +135,18 @@ static void peerRemove(const MacAddress &mac)
 
 // --- Sending -----------------------------------------------------------------
 
+// The radio's verdict on the frame in flight, stamped as the callback fires so
+// sendRawFrame() can time the link-layer ACK without counting task wake-up.
+static std::atomic<uint64_t> s_sendDoneUs{0};
+static std::atomic<bool> s_sendOk{false};
+
 static void send_cb(const esp_now_send_info_t *info, esp_now_send_status_t status)
 {
     (void)info;
-    (void)status;
+    s_sendOk.store(status == ESP_NOW_SEND_SUCCESS, std::memory_order_relaxed);
+    s_sendDoneUs.store((uint64_t)esp_timer_get_time(), std::memory_order_relaxed);
+    if (status != ESP_NOW_SEND_SUCCESS)
+        gwCount(g_gatewayStats.espnowTxFailed);
     xSemaphoreGive(s_sendDone);
 }
 
@@ -133,6 +154,9 @@ static void recv_cb(const esp_now_recv_info_t *info, const uint8_t *data, int le
 {
     if (info == NULL || data == NULL || len <= 0 || len > (int)NightMare::MaxPacketSizeV1)
         return;
+
+    gwCount(g_gatewayStats.espnowRxPackets);
+    gwCount(g_gatewayStats.espnowRxBytes, (uint32_t)len);
 
     RxPacket packet;
     memcpy(packet.mac, info->src_addr, sizeof(packet.mac));
@@ -143,6 +167,7 @@ static void recv_cb(const esp_now_recv_info_t *info, const uint8_t *data, int le
     if (xQueueSend(s_rxQueue, &packet, 0) != pdTRUE)
     {
         s_rxDropped.fetch_add(1, std::memory_order_relaxed);
+        gwCount(g_gatewayStats.espnowRxDropped);
         return;
     }
     if (s_processTask != NULL)
@@ -160,14 +185,28 @@ static bool sendRawFrame(const uint8_t *mac, const Frame &frame)
     // Clear any stale completion left behind by a previous timeout.
     xSemaphoreTake(s_sendDone, 0);
 
+    const uint64_t startUs = (uint64_t)esp_timer_get_time();
     const esp_err_t err = esp_now_send(mac, (const uint8_t *)&frame, NightMare::frameSize(frame));
     if (err != ESP_OK)
     {
         ESP_LOGW(TAG, "Send %s failed: %s", NightMare::frameTypeName(frame.header.type), esp_err_to_name(err));
+        gwCount(g_gatewayStats.espnowTxFailed);
         return false;
     }
+    gwCount(g_gatewayStats.espnowTxPackets);
+    gwCount(g_gatewayStats.espnowTxBytes, (uint32_t)NightMare::frameSize(frame));
 
-    return xSemaphoreTake(s_sendDone, pdMS_TO_TICKS(SEND_TIMEOUT_MS)) == pdTRUE;
+    const bool done = xSemaphoreTake(s_sendDone, pdMS_TO_TICKS(SEND_TIMEOUT_MS)) == pdTRUE;
+
+    // A unicast that was ACKed doubles as a ping: how long the round trip took.
+    if (done && s_sendOk.load(std::memory_order_relaxed) && memcmp(mac, BROADCAST_MAC, MacAddress::Length) != 0)
+    {
+        Device *device = s_devices.sessionFor(MacAddress(mac));
+        const uint64_t doneUs = s_sendDoneUs.load(std::memory_order_relaxed);
+        if (device != NULL && doneUs >= startUs)
+            device->noteRtt((float)(doneUs - startUs) / 1000.0f);
+    }
+    return done;
 }
 
 static bool sendTo(const MacAddress &mac, FrameType type, uint16_t messageId, uint16_t cid,
@@ -222,6 +261,7 @@ bool espBroker_sendMessage(const Device *device, const NightMare::Message &messa
             !espBroker_sendFrame(device, frame))
             return false;
     }
+    gwCount(g_gatewayStats.msgsToLocal);
     return true;
 }
 
@@ -333,9 +373,9 @@ static void handleMessageFrame(Device *device, const Frame &frame)
     {
     case ReassemblyTable::Result::COMPLETE:
     {
-        const NightMare::Message message = NightMare::Message::fromRawData(whole.data(), whole.size());
+        NightMare::Message message = NightMare::Message::fromRawData(std::move(whole));
         if (!message.topic.empty())
-            espBroker_onMessage(device, message);
+            espBroker_onMessage(device, std::move(message));
         break;
     }
     case ReassemblyTable::Result::DROPPED:
@@ -440,6 +480,7 @@ static void handlePacket(const RxPacket &packet)
     if (check != FrameCheck::OK)
     {
         s_invalidFrames++;
+        gwCount(g_gatewayStats.invalidFrames);
         // Only a sender with a live session is worth answering; anyone else
         // could be an old-protocol device, noise, or an unproven handshake.
         const Device *device = s_devices.sessionFor(mac);
@@ -463,7 +504,7 @@ static void handlePacket(const RxPacket &packet)
         break;
 
     case espDeviceManager::Verdict::SESSION:
-        admission.device->markSeen((uint8_t)packet.rssi, nowMs());
+        admission.device->markSeen(packet.rssi, nowMs());
         handleSessionFrame(admission.device, frame);
         break;
 
@@ -483,6 +524,7 @@ static void handlePacket(const RxPacket &packet)
 
     case espDeviceManager::Verdict::IGNORE:
         s_ignoredFrames++;
+        gwCount(g_gatewayStats.ignoredFrames);
         break;
     }
 }
@@ -495,14 +537,19 @@ bool espBroker_init(const uint8_t *psk, size_t pskLength)
                  (unsigned)Auth::MinPskLength, (unsigned)Auth::MaxPskLength, (unsigned)pskLength);
         return false;
     }
-    memcpy(s_psk, psk, pskLength);
+    memmove(s_psk, psk, pskLength); // psk may be s_psk itself, from espBroker_resume()
     s_pskLength = pskLength;
 
     // espBroker_init and espBroker_process run on the same (gateway) task.
     s_processTask = xTaskGetCurrentTaskHandle();
-    s_rxQueue = xQueueCreate(RX_QUEUE_DEPTH, sizeof(RxPacket));
-    s_sendDone = xSemaphoreCreateBinary();
-    if (s_rxQueue == NULL || s_sendDone == NULL)
+    // Kept across espBroker_shutdown()/resume(), so only made the first time.
+    if (s_snapshotLock == NULL)
+        s_snapshotLock = xSemaphoreCreateMutex();
+    if (s_rxQueue == NULL)
+        s_rxQueue = xQueueCreate(RX_QUEUE_DEPTH, sizeof(RxPacket));
+    if (s_sendDone == NULL)
+        s_sendDone = xSemaphoreCreateBinary();
+    if (s_rxQueue == NULL || s_sendDone == NULL || s_snapshotLock == NULL)
     {
         ESP_LOGE(TAG, "Failed to allocate ESP-NOW resources");
         return false;
@@ -551,8 +598,8 @@ bool espBroker_init(const uint8_t *psk, size_t pskLength)
 
     // Beaconing starts here and runs unconditionally from espBroker_process()
     // from now on -- not gated on any peer being known or subscribed.
-    s_beaconActive = true;
-    s_lastBeaconMs = nowMs();
+    s_beaconActive.store(true, std::memory_order_release);
+    s_lastBeaconMs.store(nowMs(), std::memory_order_release);
     return true;
 }
 
@@ -563,6 +610,49 @@ static void publishLastWill(Device &device)
     ESP_LOGI(TAG, "%s went stale, publishing its last will on '%s'",
              device.address().toString().c_str(), device.lastWillMessage().topic.c_str());
     espBroker_onMessage(&device, device.lastWillMessage());
+}
+
+static void refreshSnapshot(void)
+{
+    const uint64_t now = nowMs();
+    if (s_snapshotLock == NULL || now - s_snapshotAtMs < SNAPSHOT_INTERVAL_MS)
+        return;
+
+    std::vector<EspBrokerDeviceInfo> fresh;
+    fresh.reserve(s_devices.getDeviceCount());
+    for (uint8_t i = 0; i < s_devices.getDeviceCount(); i++)
+    {
+        const Device *device = s_devices.deviceAt(i);
+        if (device == NULL)
+            continue;
+
+        EspBrokerDeviceInfo info;
+        info.mac = device->address().toString();
+        info.name = device->assumedName();
+        info.cid = device->cid();
+        info.state = device->state();
+        info.suspended = device->isSuspended();
+        info.subscriptions = device->subscriptionList();
+        info.hasLastWill = device->hasLastWill();
+        info.lastWillTopic = device->lastWillMessage().topic;
+        info.lastWillPayloadSize = device->lastWillMessage().payload.size();
+        info.hasRssi = device->hasRssi();
+        info.rssi = device->lastRssi();
+        info.avgRssi = device->averageRssi();
+        info.rxFrames = device->rxFrames();
+        info.hasRtt = device->hasRtt();
+        info.rttMs = device->rttMs();
+        info.sessionStartMs = device->sessionStartMs();
+        info.lastSeenMs = device->lastSeenAtMs();
+        const uint64_t silentMs = now > info.lastSeenMs ? now - info.lastSeenMs : 0;
+        info.disconnectCandidate = info.suspended || silentMs > DISCONNECT_CANDIDATE_MS;
+        fresh.push_back(std::move(info));
+    }
+
+    xSemaphoreTake(s_snapshotLock, portMAX_DELAY);
+    s_snapshot.swap(fresh);
+    s_snapshotAtMs = now;
+    xSemaphoreGive(s_snapshotLock);
 }
 
 void espBroker_process(void)
@@ -579,13 +669,14 @@ void espBroker_process(void)
         ESP_LOGW(TAG, "RX queue full, dropped %lu packet(s)", (unsigned long)dropped);
 
     s_devices.expire(nowMs(), publishLastWill);
+    refreshSnapshot();
 
     // Lets a device (or a scanner) find this gateway passively.
     const uint64_t now = nowMs();
-    if (now - s_lastBeaconMs >= BEACON_INTERVAL_MS)
+    if (now - s_lastBeaconMs.load(std::memory_order_relaxed) >= BEACON_INTERVAL_MS)
     {
         sendBeacon();
-        s_lastBeaconMs = now;
+        s_lastBeaconMs.store(now, std::memory_order_release);
         if (s_invalidFrames != 0 || s_ignoredFrames != 0)
         {
             ESP_LOGW(TAG, "Last %u s: %lu invalid frame(s), %lu from senders without a session",
@@ -594,28 +685,84 @@ void espBroker_process(void)
             s_ignoredFrames = 0;
         }
     }
+
+    // The gateway task owns s_devices. Other tasks consume these snapshots
+    // instead of racing vector mutation while serving status requests.
+    s_deviceCount.store(s_devices.getDeviceCount(), std::memory_order_release);
+    s_subscriberCount.store(s_devices.getSubscriberCount(), std::memory_order_release);
 }
 
 uint8_t espBroker_subscriberCount(void)
 {
-    return s_devices.getSubscriberCount();
+    return s_subscriberCount.load(std::memory_order_acquire);
 }
 
 bool espBroker_beaconActive(void)
 {
-    return s_beaconActive;
+    return s_beaconActive.load(std::memory_order_acquire);
 }
 
 uint32_t espBroker_secondsSinceLastBeacon(void)
 {
-    if (!s_beaconActive)
+    if (!s_beaconActive.load(std::memory_order_acquire))
         return UINT32_MAX;
-    return (uint32_t)((nowMs() - s_lastBeaconMs) / 1000);
+    return (uint32_t)((nowMs() - s_lastBeaconMs.load(std::memory_order_acquire)) / 1000);
 }
 
 uint8_t espBroker_deviceCount(void)
 {
-    return s_devices.getDeviceCount();
+    return s_deviceCount.load(std::memory_order_acquire);
+}
+
+void espBroker_shutdown(void)
+{
+    if (!s_beaconActive.exchange(false, std::memory_order_acq_rel))
+        return; // never came up, or already down
+
+    esp_now_unregister_recv_cb();
+    esp_now_unregister_send_cb();
+    esp_now_deinit(); // drops every peer, so no per-session peer cleanup is needed
+
+    xQueueReset(s_rxQueue);
+    for (uint8_t i = 0; i < s_devices.getDeviceCount(); i++)
+    {
+        const Device *device = s_devices.deviceAt(i);
+        if (device != NULL)
+            s_reassembly.drop(device->address());
+    }
+    s_devices.reset();
+
+    s_deviceCount.store(0, std::memory_order_release);
+    s_subscriberCount.store(0, std::memory_order_release);
+    xSemaphoreTake(s_snapshotLock, portMAX_DELAY);
+    s_snapshot.clear();
+    xSemaphoreGive(s_snapshotLock);
+    ESP_LOGI(TAG, "ESP-NOW stopped, all sessions dropped");
+}
+
+bool espBroker_resume(void)
+{
+    return espBroker_init(s_psk, s_pskLength);
+}
+
+size_t espBroker_snapshotDevices(std::vector<EspBrokerDeviceInfo> &out)
+{
+    if (s_snapshotLock == NULL)
+        return 0;
+    xSemaphoreTake(s_snapshotLock, portMAX_DELAY);
+    out = s_snapshot;
+    xSemaphoreGive(s_snapshotLock);
+    return out.size();
+}
+
+uint32_t espBroker_heartbeatMs(void)
+{
+    return HEARTBEAT_MS;
+}
+
+uint32_t espBroker_sessionTimeoutMs(void)
+{
+    return SESSION_TIMEOUT_MS;
 }
 
 const Device *espBroker_deviceAt(uint8_t index)

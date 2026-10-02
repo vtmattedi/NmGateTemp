@@ -2,15 +2,18 @@
 #include "mqtt_client.h"
 #include "mqtt5_client.h"
 #include "esp_log.h"
+#include <atomic>
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "creds.h"
-#include <atomic>
+#include "brokerCreds.h"
+#include <new>
+#include <utility>
 
 static const char *TAG = "espMqtt";
 static esp_mqtt_client_handle_t s_client = NULL;
-static volatile bool s_connected = false;
+static std::atomic<bool> s_connected{false};
 
 // esp_mqtt_client_publish() takes the client's API lock, which the esp-mqtt
 // task holds through a stalled TLS read/write, DNS lookup or reconnect -- for
@@ -55,13 +58,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "Connected to broker");
-        s_connected = true;
+        s_connected.store(true, std::memory_order_release);
         subscribeToEverything(event->client);
         break;
 
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGW(TAG, "Disconnected from broker");
-        s_connected = false;
+        s_connected.store(false, std::memory_order_release);
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
@@ -90,7 +93,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         if ((int)s_partial.payload.size() >= event->total_data_len)
         {
             s_partialActive = false;
-            mqtt_onMessage(s_partial);
+            mqtt_onMessage(std::move(s_partial));
             s_partial = NightMare::Message();
         }
         break;
@@ -116,7 +119,7 @@ static void publisher_task(void *)
 
         // Offline: drop rather than let esp-mqtt's outbox pile up QoS1 messages
         // for a broker that is gone. Anything persistent is in the vault anyway.
-        if (!s_connected ||
+        if (!s_connected.load(std::memory_order_acquire) ||
             esp_mqtt_client_publish(s_client, message->topic.c_str(),
                                     reinterpret_cast<const char *>(message->payload.data()),
                                     (int)message->payload.size(), 1, message->persistent) < 0)
@@ -133,8 +136,26 @@ static void publisher_task(void *)
     }
 }
 
+void mqtt_stop(void)
+{
+    if (s_client == NULL)
+        return;
+    esp_mqtt_client_stop(s_client);
+    s_connected.store(false, std::memory_order_release);
+    s_partialActive = false; // the client task is gone, so this is ours now
+    s_partial = NightMare::Message();
+    ESP_LOGI(TAG, "MQTT stopped");
+}
+
 void mqtt_init(void)
 {
+    if (s_client != NULL) // stopped by mqtt_stop(): reconnect with the same client
+    {
+        ESP_LOGI(TAG, "Reconnecting");
+        ESP_ERROR_CHECK(esp_mqtt_client_start(s_client));
+        return;
+    }
+
     s_outbound = xQueueCreate(OUTBOUND_QUEUE_DEPTH, sizeof(NightMare::Message *));
     if (s_outbound == NULL)
     {
@@ -143,12 +164,32 @@ void mqtt_init(void)
     }
 
     esp_mqtt_client_config_t config = {};
+#if defined(REMOTE_MQTT_URL) && defined(REMOTE_MQTT_PORT)
     config.broker.address.hostname = REMOTE_MQTT_URL;
     config.broker.address.port = REMOTE_MQTT_PORT;
     config.broker.address.transport = MQTT_TRANSPORT_OVER_SSL;
+#ifdef ROOT_CA
     config.broker.verification.certificate = ROOT_CA;
+#endif
+#ifdef MQTT_USER
     config.credentials.username = MQTT_USER;
+#endif
+#ifdef MQTT_PASSWD
     config.credentials.authentication.password = MQTT_PASSWD;
+#endif
+#elif defined(LOCAL_MQTT_HOST) && defined(LOCAL_MQTT_PORT)
+    config.broker.address.hostname = LOCAL_MQTT_HOST;
+    config.broker.address.port = LOCAL_MQTT_PORT;
+    config.broker.address.transport = MQTT_TRANSPORT_OVER_TCP;
+#ifdef GATEWAY_USER
+    config.credentials.username = GATEWAY_USER;
+#endif
+#ifdef GATEWAY_PASSWD
+    config.credentials.authentication.password = GATEWAY_PASSWD;
+#endif
+#else
+#error "Define either REMOTE_MQTT_URL/REMOTE_MQTT_PORT or LOCAL_MQTT_HOST/LOCAL_MQTT_PORT"
+#endif
     config.session.protocol_ver = MQTT_PROTOCOL_V_5; // no_local is an MQTT 5 subscription option
     config.session.keepalive = 60;
 
@@ -167,15 +208,22 @@ void mqtt_init(void)
         return;
     }
     ESP_ERROR_CHECK(esp_mqtt_client_start(s_client));
-    ESP_LOGI(TAG, "Connecting to %s:%d", REMOTE_MQTT_URL, REMOTE_MQTT_PORT);
+    ESP_LOGI(TAG, "Connecting to %s:%d", config.broker.address.hostname,
+             config.broker.address.port);
 }
 
-bool mqtt_publish(const NightMare::Message &message)
+bool mqtt_publish(NightMare::Message message)
 {
     if (s_client == NULL || s_outbound == NULL)
         return false;
 
-    NightMare::Message *copy = new NightMare::Message(message);
+    NightMare::Message *copy = new (std::nothrow) NightMare::Message(std::move(message));
+    if (copy == nullptr)
+    {
+        s_dropped.fetch_add(1);
+        ESP_LOGE(TAG, "Unable to allocate outbound publish envelope");
+        return false;
+    }
     if (xQueueSend(s_outbound, &copy, 0) != pdTRUE)
     {
         delete copy;
@@ -187,5 +235,5 @@ bool mqtt_publish(const NightMare::Message &message)
 
 bool mqtt_is_connected(void)
 {
-    return s_connected;
+    return s_connected.load(std::memory_order_acquire);
 }

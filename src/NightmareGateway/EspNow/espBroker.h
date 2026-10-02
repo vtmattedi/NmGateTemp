@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 #include "NightmareGateway/NightMare/Message.h"
 #include "NightmareGateway/EspNow/Frame.h"
 #include "NightmareGateway/NightMare/Device.h"
@@ -16,6 +17,14 @@ bool espBroker_init(const uint8_t *psk, size_t pskLength);
 // gateway without sending anything first. Must be called from the gateway
 // task, the only owner of the device table.
 void espBroker_process(void);
+
+// Tears ESP-NOW down: every session and pending handshake is dropped (no last
+// wills fire -- the devices just see the gateway go quiet), the radio stops
+// beaconing and listening. Safe when already down. resume() brings it back with
+// the key given to espBroker_init(); false if that was never called or ESP-NOW
+// fails to start. Gateway task only.
+void espBroker_shutdown(void);
+bool espBroker_resume(void);
 
 // The beacon is unconditional and unaddressed: it runs from a successful
 // espBroker_init() onward regardless of whether anything is listening, and
@@ -48,10 +57,40 @@ uint8_t espBroker_subscriberCount(void);
 uint8_t espBroker_deviceCount(void);
 const NightMare::Device *espBroker_deviceAt(uint8_t index);
 
+// Everything the web UI shows about one session, copied so it can be read from
+// any task. Published by the gateway task a couple of times a second.
+struct EspBrokerDeviceInfo
+{
+    std::string mac;
+    std::string name; // learned from "<name>/status", may be empty
+    uint16_t cid = 0;
+    NightMare::ConnectionState state = NightMare::ConnectionState::AUTHENTICATED;
+    bool suspended = false; // a re-handshake is in progress
+    std::vector<std::string> subscriptions;
+    bool hasLastWill = false;
+    std::string lastWillTopic;
+    size_t lastWillPayloadSize = 0;
+    bool hasRssi = false;
+    int8_t rssi = 0;
+    float avgRssi = 0;
+    uint32_t rxFrames = 0;
+    bool hasRtt = false;
+    float rttMs = 0; // link-layer ACK round trip, smoothed
+    uint64_t sessionStartMs = 0; // esp_timer uptime
+    uint64_t lastSeenMs = 0;     // esp_timer uptime
+    // Silent for two heartbeats (or mid re-handshake): likely about to time out.
+    bool disconnectCandidate = false;
+};
+
+// Thread-safe copy of every session for telemetry; returns how many.
+size_t espBroker_snapshotDevices(std::vector<EspBrokerDeviceInfo> &out);
+uint32_t espBroker_heartbeatMs(void);
+uint32_t espBroker_sessionTimeoutMs(void);
+
 // Hooks, both called from the gateway task. Implemented by the gateway.
 // The device is mutable: this hook is where the gateway learns things about the
 // sender from what it publishes (e.g. its name from "<name>/status").
-void espBroker_onMessage(NightMare::Device *device, const NightMare::Message &message);
+void espBroker_onMessage(NightMare::Device *device, NightMare::Message message);
 void espBroker_onSubscribe(const NightMare::Device *device, const std::string &filter);
 
 // Function to build a frame from a message
