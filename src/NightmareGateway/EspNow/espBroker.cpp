@@ -459,6 +459,10 @@ static void handleSessionFrame(Device *device, const Frame &frame)
         const bool ok = device->setLastWill(will);
         ESP_LOGI(TAG, "%s sets last will on '%s'%s", device->address().toString().c_str(),
                  will.topic.c_str(), ok ? "" : " (rejected)");
+        // A "<name>/status" will names the device before it has published any
+        // status itself. A real status message still overrides this later.
+        if (ok && device->assumedName().empty() && topicMatchesPattern(will.topic, "+/status"))
+            device->setAssumedName(will.topic.substr(0, will.topic.size() - strlen("/status")));
         if (ok)
             reply(device, FrameType::ACK, frame.header.messageId);
         else

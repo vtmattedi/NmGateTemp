@@ -27,7 +27,7 @@ bool chipTempInit()
         }
     }
 
-    temperature_sensor_config_t config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(10, 90);
+    temperature_sensor_config_t config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(20, 100);
     esp_err_t err = temperature_sensor_install(&config, &sensor);
     if (err != ESP_OK)
     {

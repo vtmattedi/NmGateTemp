@@ -69,6 +69,11 @@
         <strong class="kpi-value" id="k-vault">—</strong>
         <span class="kpi-foot">retained topics</span>
       </article>
+      <article class="kpi" id="kpi-temp">
+        <span class="kpi-label">Chip temperature</span>
+        <strong class="kpi-value"><span id="k-temp">—</span><small> °C</small></strong>
+        <span class="kpi-foot" id="k-temp-foot">&nbsp;</span>
+      </article>
       <article class="kpi">
         <span class="kpi-label">Free heap</span>
         <strong class="kpi-value" id="k-heap">—</strong>
@@ -92,6 +97,13 @@
             <span class="sw loc"></span>gateway → devices <span class="sw dev"></span>devices → gateway</div>
         </header>
         <div class="chart-box"><canvas id="chart-messages"></canvas></div>
+      </article>
+      <article class="card">
+        <header class="card-head">
+          <h2>Chip temperature <small>°C</small></h2>
+          <div class="legend"><span class="sw temp"></span>internal sensor</div>
+        </header>
+        <div class="chart-box"><canvas id="chart-temp"></canvas></div>
       </article>
     </section>
 

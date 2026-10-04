@@ -51,7 +51,9 @@
     labels: [],
     rx: [], tx: [],
     toRemote: [], fromRemote: [], fromLocal: [], toLocal: [],
+    temp: [],
   };
+  const tempRange = { min: Infinity, max: -Infinity };   // over this page's lifetime
 
   /* ---------- rates ---------------------------------------------------------- */
   // 32-bit counters on the gateway wrap; a smaller number just means it wrapped.
@@ -79,12 +81,12 @@
   const charts = {};
   const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-  function makeChart(canvasId, series) {
+  function makeChart(canvasId, series, options = {}) {
     if (!window.Chart) return null;
     const ctx = $(canvasId).getContext('2d');
     const datasets = series.map((s) => ({
       label: s.label, data: history[s.key], borderWidth: 2, tension: 0.35, pointRadius: 0, fill: true,
-      _key: s.key, _color: s.color,
+      _key: s.key, _color: s.color, _unit: options.unit ?? '/s',
     }));
     const chart = new Chart(ctx, {
       type: 'line',
@@ -97,13 +99,17 @@
           tooltip: {
             callbacks: {
               title: (items) => `${HISTORY - 1 - items[0].dataIndex}s ago`,
-              label: (item) => ` ${item.dataset.label}: ${fmtRate(item.parsed.y)}/s`,
+              label: (item) => item.dataset._unit === '/s'
+                ? ` ${item.dataset.label}: ${fmtRate(item.parsed.y)}/s`
+                : ` ${item.dataset.label}: ${item.parsed.y.toFixed(1)}${item.dataset._unit}`,
             },
           },
         },
         scales: {
           x: { display: false },
-          y: { beginAtZero: true, suggestedMax: 4, border: { display: false }, ticks: { maxTicksLimit: 5 } },
+          y: options.unit
+            ? { beginAtZero: false, grace: '15%', border: { display: false }, ticks: { maxTicksLimit: 5 } }
+            : { beginAtZero: true, suggestedMax: 4, border: { display: false }, ticks: { maxTicksLimit: 5 } },
         },
       },
     });
@@ -140,13 +146,15 @@
       { key: 'toLocal', label: 'gateway → devices', color: '--violet' },
       { key: 'fromLocal', label: 'devices → gateway', color: '--accent' },
     ]);
+    makeChart('chart-temp', [{ key: 'temp', label: 'chip', color: '--bad' }], { unit: ' °C' });
     styleCharts();
     matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', styleCharts);
   }
 
-  function pushHistory(rates) {
+  function pushHistory(rates, temp) {
     for (const key of Object.keys(history)) {
       if (key === 'labels') history.labels.push('');
+      else if (key === 'temp') history.temp.push(temp);
       else history[key].push(rates ? rates[key] : null);
       if (history[key].length > HISTORY) history[key].shift();
     }
@@ -200,6 +208,20 @@
     $('k-mps-down').textContent = rates ? fmtRate(rates.fromRemote) : '—';
 
     $('k-vault').textContent = d.vault.count;
+    const temp = d.system.temperature_c;
+    const tile = $('kpi-temp');
+    if (temp == null) {
+      $('k-temp').textContent = '—';
+      $('k-temp-foot').textContent = 'sensor unavailable';
+      tile.classList.remove('warm', 'hot');
+    } else {
+      tempRange.min = Math.min(tempRange.min, temp);
+      tempRange.max = Math.max(tempRange.max, temp);
+      $('k-temp').textContent = temp.toFixed(1);
+      $('k-temp-foot').textContent = `${tempRange.min.toFixed(1)} – ${tempRange.max.toFixed(1)} °C this session`;
+      tile.classList.toggle('hot', temp >= 80);
+      tile.classList.toggle('warm', temp >= 65 && temp < 80);
+    }
     $('k-heap').textContent = fmtBytes(d.system.free_heap);
     $('k-heap-foot').textContent = `low-water ${fmtBytes(d.system.min_free_heap)}`;
   }
@@ -389,12 +411,13 @@
       const rates = computeRates(d);
       if (prev && d.uptime_ms < prev.uptime_ms) {            // rebooted: restart the graphs
         for (const key of Object.keys(history)) history[key].length = 0;
+        tempRange.min = Infinity; tempRange.max = -Infinity;
       }
       prev = d; lastLive = d;
       renderStatus(d);
       renderKpis(d, rates);
       renderDevices(d);
-      if (rates) pushHistory(rates);
+      if (rates) pushHistory(rates, d.system.temperature_c);
       setOnline(true);
     } catch {
       setOnline(false);
@@ -460,7 +483,7 @@
       gateway: { state: 'running', ready: true, version: '0.1.94', build: '2026-10-02 00:29' },
       wifi: { connected: true, ssid: 'wake-iot', rssi: -58, channel: 6, ip: '192.168.1.42' },
       mqtt: { connected: true },
-      system: { free_heap: 183_400, min_free_heap: 151_200, largest_free_block: 110_592, temperature_c: 41.3 },
+      system: { free_heap: 183_400, min_free_heap: 151_200, largest_free_block: 110_592, temperature_c: +(41 + 6 * Math.sin(Date.now() / 20000) + Math.random()).toFixed(2) },
       espnow: {
         beacon_active: true, seconds_since_last_beacon: Math.floor(Math.random() * 5), devices: devices.length, subscribers: 3,
         heartbeat_ms: 15000, session_timeout_ms: 60000,
