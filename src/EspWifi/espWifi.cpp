@@ -4,6 +4,7 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "webServer/webserver.h"
+#include "System/events.h"
 #include <atomic>
 
 static const char *TAG = "espWifi";
@@ -26,7 +27,12 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        s_connected.store(false, std::memory_order_release);
+        // Only the drop from connected is an event; the retries that follow are not.
+        if (s_connected.exchange(false, std::memory_order_acq_rel))
+        {
+            const wifi_event_sta_disconnected_t *lost = (const wifi_event_sta_disconnected_t *)event_data;
+            ESP_LOGI(EVENT_TAG, "wifi disconnected (reason %d)", lost != nullptr ? (int)lost->reason : -1);
+        }
         web_server::stop();
         if (retry_count < WIFI_MAX_RETRY)
         {
@@ -43,7 +49,9 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+        wifi_ap_record_t ap = {};
+        esp_wifi_sta_get_ap_info(&ap);
+        ESP_LOGI(EVENT_TAG, "wifi connected: %s ip " IPSTR, (const char *)ap.ssid, IP2STR(&event->ip_info.ip));
         retry_count = 0;
         s_connected.store(true, std::memory_order_release);
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);

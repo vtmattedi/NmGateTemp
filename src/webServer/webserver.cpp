@@ -72,6 +72,10 @@ static bool request_text_format(httpd_req_t *request)
 		   strstr(accept, "application/json") == nullptr;
 }
 
+#define SLOW_SEND_MS 500
+
+// Logs only the responses worth knowing about: a failed send, or one that held
+// the (single) server task for a while -- which is what makes the browser time out.
 static esp_err_t send_json(httpd_req_t *request, cJSON *root)
 {
 	char *payload = cJSON_PrintUnformatted(root);
@@ -82,8 +86,21 @@ static esp_err_t send_json(httpd_req_t *request, cJSON *root)
 	}
 
 	httpd_resp_set_type(request, "application/json");
-	esp_err_t result = httpd_resp_send(request, payload, HTTPD_RESP_USE_STRLEN);
+	const size_t bytes = strlen(payload);
+	const int64_t started_us = esp_timer_get_time();
+	esp_err_t result = httpd_resp_send(request, payload, bytes);
+	const int64_t elapsed_ms = (esp_timer_get_time() - started_us) / 1000;
 	free(payload);
+
+	if (result != ESP_OK) {
+		ESP_LOGW(TAG, "HTTP send failed uri=%s fd=%d bytes=%u after=%lldms err=%s", request->uri,
+				 httpd_req_to_sockfd(request), static_cast<unsigned>(bytes),
+				 static_cast<long long>(elapsed_ms), esp_err_to_name(result));
+	} else if (elapsed_ms > SLOW_SEND_MS) {
+		ESP_LOGW(TAG, "HTTP send slow uri=%s fd=%d bytes=%u took=%lldms", request->uri,
+				 httpd_req_to_sockfd(request), static_cast<unsigned>(bytes),
+				 static_cast<long long>(elapsed_ms));
+	}
 	return result;
 }
 
@@ -299,17 +316,40 @@ static bool is_text(const std::vector<uint8_t> &payload)
 
 #define VAULT_PREVIEW_BYTES 2048
 
+// GET /api/vault?v=<version the page already holds>. When that is still the
+// current vault version the answer is just {"changed":false,...} instead of
+// every retained message again.
 static esp_err_t vault_handler(httpd_req_t *request)
 {
 	const uint64_t now_ms = static_cast<uint64_t>(esp_timer_get_time() / 1000);
+
+	char query[32] = {};
+	char known[16] = {};
+	if (httpd_req_get_url_query_str(request, query, sizeof(query)) == ESP_OK &&
+		httpd_query_key_value(query, "v", known, sizeof(known)) == ESP_OK &&
+		known[0] != '\0' && strtoul(known, nullptr, 10) == nightmare_gateway_vault_version()) {
+		cJSON *same = cJSON_CreateObject();
+		if (same == nullptr) {
+			return httpd_resp_send_err(request, HTTPD_500_INTERNAL_SERVER_ERROR,
+									   "Unable to allocate JSON response");
+		}
+		cJSON_AddBoolToObject(same, "changed", false);
+		cJSON_AddNumberToObject(same, "version", strtoul(known, nullptr, 10));
+		cJSON_AddNumberToObject(same, "uptime_ms", static_cast<double>(now_ms));
+		return send_json(request, same);
+	}
+
 	std::vector<NightMare::RetainedEntry> entries;
-	nightmare_gateway_vault_snapshot(entries);
+	uint32_t version = 0;
+	nightmare_gateway_vault_snapshot(entries, &version);
 
 	cJSON *root = cJSON_CreateObject();
 	if (root == nullptr) {
 		return httpd_resp_send_err(request, HTTPD_500_INTERNAL_SERVER_ERROR,
 								   "Unable to allocate JSON response");
 	}
+	cJSON_AddBoolToObject(root, "changed", true);
+	cJSON_AddNumberToObject(root, "version", version);
 	cJSON_AddNumberToObject(root, "uptime_ms", static_cast<double>(now_ms));
 	cJSON_AddNumberToObject(root, "count", entries.size());
 	cJSON *list = cJSON_AddArrayToObject(root, "messages");
@@ -484,6 +524,11 @@ esp_err_t start(uint16_t port)
 	config.max_uri_handlers = 16;
 	config.stack_size = 8192; // cJSON printing recurses
 	config.lru_purge_enable = true; // browsers hold keep-alive sockets; never lock out a new tab
+	// Leave sockets for MQTT/TLS, mDNS and browser reconnects (CONFIG_LWIP_MAX_SOCKETS is 16).
+	config.max_open_sockets = 4;
+	// Give up on a stuck response before the browser's own 5 s request timeout does.
+	config.send_wait_timeout = 3;
+	config.recv_wait_timeout = 5;
 
 	esp_err_t result = httpd_start(&s_server, &config);
 	if (result != ESP_OK) {

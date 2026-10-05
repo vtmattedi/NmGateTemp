@@ -46,12 +46,20 @@ namespace NightMare
         // Retrieve the retained message for a specific topic. Returns true if a message was found, false otherwise.
         // The topic is treated as a filter, so a subscriber gets every retained message below it.
         bool getMessagesForTopic(const std::string &topic, std::vector<Message> &output);
-        // Copies every retained message, in topic order, for telemetry.
-        size_t snapshot(std::vector<RetainedEntry> &output);
+        // Copies every retained message, in topic order, for telemetry. `version`
+        // (optional) is set to the vault version the copy corresponds to.
+        size_t snapshot(std::vector<RetainedEntry> &output, uint32_t *version = nullptr);
         size_t size();
+        // Changes on every retain, replace or delete, so a reader that has seen
+        // version N knows its copy is current while version() is still N. Starts
+        // at 1 and skips 0 on wrap, leaving 0 for "never fetched".
+        uint32_t version();
 
     private:
+        void bumpVersion() { if (++version_ == 0) version_ = 1; }
+
         std::mutex lock_;
+        uint32_t version_ = 1;
         std::map<std::string, RetainedEntry> retained;
     };
 }

@@ -77,7 +77,12 @@ namespace NightMare
         std::lock_guard<std::mutex> guard(lock_);
         const size_t length = std::min<size_t>(payload_length, payload.size());
         if (length == 0)
-            return retained.erase(topic) > 0;
+        {
+            const bool removed = retained.erase(topic) > 0;
+            if (removed)
+                bumpVersion();
+            return removed;
+        }
 
         RetainedEntry &entry = retained[topic];
         Message &slot = entry.message;
@@ -87,6 +92,7 @@ namespace NightMare
         slot.persistent = true;
         entry.updatedAtMs = nowMs;
         entry.revisions++;
+        bumpVersion();
         return true;
     }
 
@@ -105,13 +111,21 @@ namespace NightMare
         return found;
     }
 
-    size_t MessageVault::snapshot(std::vector<RetainedEntry> &output)
+    size_t MessageVault::snapshot(std::vector<RetainedEntry> &output, uint32_t *version)
     {
         std::lock_guard<std::mutex> guard(lock_);
+        if (version != nullptr)
+            *version = version_;
         output.reserve(output.size() + retained.size());
         for (const auto &entry : retained)
             output.push_back(entry.second);
         return retained.size();
+    }
+
+    uint32_t MessageVault::version()
+    {
+        std::lock_guard<std::mutex> guard(lock_);
+        return version_;
     }
 
     size_t MessageVault::size()

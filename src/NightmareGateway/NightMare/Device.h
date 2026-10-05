@@ -100,6 +100,11 @@ namespace NightMare
         bool setLastWill(const Message &message);
         void clearLastWill();
         const std::string &assumedName() const { return assumedName_; }
+        // "name (mac)" when the name is known, else just the mac, for log lines.
+        std::string label() const
+        {
+            return assumedName_.empty() ? mac.toString() : assumedName_ + " (" + mac.toString() + ")";
+        }
         void setAssumedName(const std::string &name);
     };
 }

@@ -1,6 +1,7 @@
 #include "espDeviceManager.h"
 #include "NightmareGateway/EspNow/Auth.h"
 #include "esp_log.h"
+#include "System/events.h"
 #include <string.h>
 
 static const char *TAG = "espSessions";
@@ -283,8 +284,11 @@ void espDeviceManager::expire(uint64_t nowMs, void (*onLost)(Device &device))
         if (silentMs <= (connected ? sessionTimeoutMs : SecuringTimeoutMs))
             continue;
 
-        ESP_LOGI(TAG, "Session %u (%s) %s", device.cid(), device.address().toString().c_str(),
-                 connected ? "went silent" : "never finished securing");
+        if (connected)
+            ESP_LOGI(EVENT_TAG, "client disconnected: %s cid=%u (went silent)", device.label().c_str(),
+                     (unsigned)device.cid());
+        else
+            ESP_LOGI(EVENT_TAG, "client auth failed: %s (never finished securing)", device.label().c_str());
         if (connected && onLost != nullptr && device.hasLastWill())
             onLost(device);
         const MacAddress mac = device.address();

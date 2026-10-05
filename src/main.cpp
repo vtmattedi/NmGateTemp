@@ -16,6 +16,7 @@
 #include "creds.h"
 #include "esp_system.h"
 #include "System/chipTemperature.h"
+#include "System/events.h"
 
 #ifndef NM_ESPNOW_PSK
 #error "Define NM_ESPNOW_PSK (the ESP-NOW network key, same on every device) in include/creds.h"
@@ -369,11 +370,6 @@ static void pumpSerial(void)
 
             if (start[0] != '\0')
             {
-                // Name only: the arguments can hold a Wi-Fi password.
-                size_t nameLength = 0;
-                while (start[nameLength] != '\0' && start[nameLength] != ' ' && start[nameLength] != '\t')
-                    nameLength++;
-                ESP_LOGI("Serial", "Received: %.*s%s", (int)nameLength, start, start[nameLength] != '\0' ? " ..." : "");
                 handleSerialLine(start);
             }
             s_serialLen = 0;
@@ -396,6 +392,12 @@ uint64_t millis()
 
 extern "C" void app_main(void)
 {
+    // Normal operation logs events (events.h) and anything wrong; the rest of
+    // the INFO chatter is off. Serial command output stays on its own tag.
+    esp_log_level_set("*", ESP_LOG_WARN);
+    esp_log_level_set(EVENT_TAG, ESP_LOG_INFO);
+    esp_log_level_set("Serial", ESP_LOG_INFO);
+
     printf("Hello world\n");
     // Installing the driver (rather than relying on the boot-time console
     // setup, which only covers output) is what makes uart_read_bytes work;

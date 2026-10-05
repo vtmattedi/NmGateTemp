@@ -429,9 +429,14 @@ void gateway_task(void *pvParameters)
     }
 }
 
-size_t nightmare_gateway_vault_snapshot(std::vector<NightMare::RetainedEntry> &out)
+size_t nightmare_gateway_vault_snapshot(std::vector<NightMare::RetainedEntry> &out, uint32_t *version)
 {
-    return s_vault.snapshot(out);
+    return s_vault.snapshot(out, version);
+}
+
+uint32_t nightmare_gateway_vault_version()
+{
+    return s_vault.version();
 }
 
 size_t nightmare_gateway_vault_size()

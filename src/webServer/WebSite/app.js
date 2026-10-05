@@ -12,7 +12,11 @@
   const LIVE_MS = 1000;
   const VAULT_MS = 3000;
   const HISTORY = 120;           // samples kept in the charts (2 minutes)
-  const REQUEST_TIMEOUT_MS = 3000;
+  // Longer than the gateway's own send timeout (3 s, webserver.cpp), so the ESP
+  // gives up on a stuck response before the browser abandons the request.
+  const REQUEST_TIMEOUT_MS = 5000;
+  const RETRY_INITIAL_MS = 1000; // after a failed poll: 1 s, 2 s, 4 s, 8 s, then every 10 s
+  const RETRY_MAX_MS = 10000;
   const DEMO = new URLSearchParams(location.search).has('demo');
 
   const $ = (id) => document.getElementById(id);
@@ -43,8 +47,9 @@
   let prev = null;               // previous /api/live sample, for rates
   let lastLive = null;
   let vaultRows = [];
+  let vaultVersion = null;       // what the gateway last sent; echoed back so it can answer "no change"
+  let vaultFetchedAt = 0;        // Date.now() when vaultRows' age_ms values were true
   let vaultSeen = new Map();     // topic -> revisions, to flash changed rows
-  let vaultUptimeAtFetch = 0;
   const expanded = new Set();    // device MACs whose subscription list is open
 
   const history = {
@@ -314,6 +319,9 @@
   });
 
   /* ---------- vault ----------------------------------------------------------- */
+  // An unchanged vault is not resent, so ages are counted up from when they were last true.
+  const vaultAge = (row) => row.age_ms + (Date.now() - vaultFetchedAt);
+
   const filterInput = $('vault-filter');
   filterInput.addEventListener('input', renderVault);
 
@@ -335,7 +343,7 @@
         <td><span class="badge ${r.origin === 'remote' ? 'info' : 'accent'}">${r.origin === 'remote' ? 'MQTT' : 'ESP-NOW'}</span></td>
         <td class="num">${fmtBytes(r.size)}</td>
         <td class="num">${r.revisions}</td>
-        <td class="num muted">${esc(fmtAgo(r.age_ms))}</td>
+        <td class="num muted">${esc(fmtAgo(vaultAge(r)))}</td>
       </tr>`;
     }).join('');
     vaultSeen = new Map(vaultRows.map((r) => [r.topic, r.revisions]));
@@ -370,7 +378,7 @@
       ['Size', fmtBytes(entry.size) + (entry.truncated ? ' (truncated)' : '')],
       ['Encoding', entry.encoding],
       ['Updates', entry.revisions],
-      ['Updated', fmtAgo(entry.age_ms)],
+      ['Updated', fmtAgo(vaultAge(entry))],
     ].map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('');
     if (html) $('dlg-payload').innerHTML = html; else $('dlg-payload').textContent = shown;
     $('dlg-copy').onclick = async () => {
@@ -383,17 +391,62 @@
   dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
 
   /* ---------- transport ------------------------------------------------------- */
-  async function getJson(url) {
+  // `signal` cancels the request early (the poller does that when it restarts).
+  async function getJson(url, signal) {
     if (DEMO) return demo(url);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const cancel = () => controller.abort();
+    signal?.addEventListener('abort', cancel);
     try {
       const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
       if (!response.ok) throw new Error(`${response.status}`);
       return await response.json();
     } finally {
       clearTimeout(timer);
+      signal?.removeEventListener('abort', cancel);
     }
+  }
+
+  /* One chain of requests per endpoint. The next request is only scheduled once
+   * the current one has finished, so requests to the same endpoint never
+   * overlap. Failures back off exponentially up to RETRY_MAX_MS and a success
+   * goes straight back to the normal interval. A hidden tab makes no requests;
+   * showing it again restarts the chain immediately. */
+  function makePoller(task, normalMs) {
+    let timer = null;
+    let controller = null;
+    let retryMs = RETRY_INITIAL_MS;
+    let generation = 0;                       // a restarted chain invalidates the old one
+
+    async function step(mine) {
+      timer = null;
+      if (mine !== generation) return;
+
+      let next = normalMs;
+      if (!document.hidden) {
+        controller = new AbortController();
+        try {
+          await task(controller.signal);
+          retryMs = RETRY_INITIAL_MS;
+        } catch {
+          if (controller.signal.aborted && mine !== generation) return;   // superseded, not failed
+          next = retryMs;
+          retryMs = Math.min(retryMs * 2, RETRY_MAX_MS);
+        }
+      }
+      if (mine === generation) timer = setTimeout(() => step(mine), next);
+    }
+
+    return {
+      restart() {
+        generation++;
+        clearTimeout(timer);
+        controller?.abort();
+        retryMs = RETRY_INITIAL_MS;
+        step(generation);
+      },
+    };
   }
 
   function setOnline(online) {
@@ -402,12 +455,9 @@
     $('banner').hidden = online;
   }
 
-  let liveBusy = false;
-  async function pollLive() {
-    if (liveBusy) return;
-    liveBusy = true;
+  async function pollLive(signal) {
     try {
-      const d = await getJson('/api/live');
+      const d = await getJson('/api/live', signal);
       const rates = computeRates(d);
       if (prev && d.uptime_ms < prev.uptime_ms) {            // rebooted: restart the graphs
         for (const key of Object.keys(history)) history[key].length = 0;
@@ -419,26 +469,26 @@
       renderDevices(d);
       if (rates) pushHistory(rates, d.system.temperature_c);
       setOnline(true);
-    } catch {
-      setOnline(false);
-    } finally {
-      liveBusy = false;
+    } catch (error) {
+      if (!signal.aborted) setOnline(false);   // an aborted request is a restart, not an outage
+      throw error;                              // the poller backs off
     }
   }
 
-  let vaultBusy = false;
-  async function pollVault() {
-    if (vaultBusy || document.hidden) return;
-    vaultBusy = true;
-    try {
-      const v = await getJson('/api/vault');
+  // The live poll reports connectivity; a vault failure only backs its own chain off.
+  async function pollVault(signal) {
+    const query = vaultVersion == null ? '' : `?v=${vaultVersion}`;
+    const v = await getJson(`/api/vault${query}`, signal);
+    if (v.changed !== false) {          // the demo data has no flag and is always full
       vaultRows = v.messages;
-      vaultUptimeAtFetch = v.uptime_ms;
-      renderVault();
-    } catch { /* the live poll reports connectivity */ } finally {
-      vaultBusy = false;
+      vaultVersion = v.version ?? null;
+      vaultFetchedAt = Date.now();
     }
+    renderVault();                      // also when unchanged, so the "updated … ago" column keeps counting
   }
+
+  const liveLoop = makePoller(pollLive, LIVE_MS);
+  const vaultLoop = makePoller(pollVault, VAULT_MS);
 
   /* ---------- demo data ------------------------------------------------------- */
   const demoState = { t0: Date.now(), counters: { rx: 5200, tx: 6100, rxb: 0, txb: 0, fl: 3, tr: 400, fr: 380, fL: 900, tL: 760, inv: 2, ign: 14 }, rev: {} };
@@ -461,7 +511,7 @@
       mk('30:AE:A4:07:0D:64', 'pump-controller', 3, 4, ['pump/+/cmd', 'pump/state', 'Control/time', 'pump-controller/in'], false, -78.8, 38_000 + (up % 9000)),
       mk('7C:DF:A1:00:B2:9E', '', 4, 0, [], false, -88.1, 300, 'securing'),
     ];
-    if (url === '/api/vault') {
+    if (url.startsWith('/api/vault')) {
       const topics = [
         ['greenhouse-1/status', 'online', 'local'],
         ['greenhouse-1/telemetry', JSON.stringify({ temp: 24.6, humidity: 61, light: 810, ts: Math.floor(Date.now() / 1000) }), 'local'],
@@ -499,10 +549,13 @@
   function start() {
     initCharts();
     if (DEMO) $('gw-sub').textContent = 'demo mode';
-    pollLive(); pollVault();
-    setInterval(pollLive, LIVE_MS);
-    setInterval(pollVault, VAULT_MS);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) { pollLive(); pollVault(); } });
+    liveLoop.restart();
+    vaultLoop.restart();
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) return;
+      liveLoop.restart();
+      vaultLoop.restart();
+    });
     // Chart.js is deferred and comes from a CDN: build the graphs once it arrives.
     if (!window.Chart) {
       window.addEventListener('load', () => { if (window.Chart && !Object.keys(charts).length) initCharts(); });

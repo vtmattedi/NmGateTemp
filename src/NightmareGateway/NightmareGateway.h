@@ -53,7 +53,9 @@ enum class NightMareGatewayState : uint8_t
 BaseType_t start_nightmare_gateway(const NightMareGatewayConfig &config);
 
 // Thread-safe views of the retained-message vault, for the web UI.
-size_t nightmare_gateway_vault_snapshot(std::vector<NightMare::RetainedEntry> &out);
+size_t nightmare_gateway_vault_snapshot(std::vector<NightMare::RetainedEntry> &out, uint32_t *version = nullptr);
+// Changes whenever the vault does; see MessageVault::version().
+uint32_t nightmare_gateway_vault_version();
 size_t nightmare_gateway_vault_size();
 
 // "gateway off": stops ESP-NOW (sessions dropped, no beacon) and MQTT. "on"

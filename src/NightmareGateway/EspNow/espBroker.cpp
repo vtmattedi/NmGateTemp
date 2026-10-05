@@ -4,6 +4,7 @@
 #include "Reassembly.h"
 #include "NightmareGateway/NightMare/Topic.h"
 #include "NightmareGateway/GatewayStats.h"
+#include "System/events.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
@@ -108,9 +109,9 @@ static esp_now_peer_info_t peerInfo(const MacAddress &mac)
 static bool peerAdd(const MacAddress &mac)
 {
     esp_now_peer_info_t peer = peerInfo(mac);
-    esp_err_t err = esp_now_add_peer(&peer);
-    if (err == ESP_ERR_ESPNOW_EXIST) // left over from an earlier session: back to plaintext
-        err = esp_now_mod_peer(&peer);
+    // A peer left over from an earlier session is turned back to plaintext.
+    // Asking first avoids esp_now_add_peer() logging "Peer exists" every time.
+    const esp_err_t err = esp_now_is_peer_exist(mac.bytes) ? esp_now_mod_peer(&peer) : esp_now_add_peer(&peer);
     if (err != ESP_OK)
         ESP_LOGE(TAG, "Peer %s: %s", mac.toString().c_str(), esp_err_to_name(err));
     return err == ESP_OK;
@@ -330,7 +331,7 @@ static void handleAuth(const MacAddress &mac, const Frame &frame)
     Auth::wipe(expected, sizeof(expected));
     if (!proofOk)
     {
-        ESP_LOGW(TAG, "AUTH from %s failed: wrong network key?", mac.toString().c_str());
+        ESP_LOGI(EVENT_TAG, "client auth failed: %s (wrong network key?)", mac.toString().c_str());
         sendError(mac, 0, frame.header.messageId, ErrorCode::AUTH_FAILED);
         s_devices.abandonHandshake(mac);
         Auth::wipe(&context, sizeof(context));
@@ -403,8 +404,7 @@ static void handleSessionFrame(Device *device, const Frame &frame)
         {
             // It arrived decrypted with the session LMK: both ends hold the same key.
             device->setState(ConnectionState::CONNECTED);
-            ESP_LOGI(TAG, "Session %u (%s) secured and connected", device->cid(),
-                     device->address().toString().c_str());
+            ESP_LOGI(EVENT_TAG, "client connected: %s cid=%u", device->label().c_str(), (unsigned)device->cid());
         }
         reply(device, FrameType::PONG, frame.header.messageId);
         break;
@@ -412,7 +412,9 @@ static void handleSessionFrame(Device *device, const Frame &frame)
     case FrameType::DISCONNECT:
     {
         // A clean goodbye: no last will, like an MQTT DISCONNECT.
-        ESP_LOGI(TAG, "Session %u (%s) disconnected", device->cid(), device->address().toString().c_str());
+        if (device->state() == ConnectionState::CONNECTED)
+            ESP_LOGI(EVENT_TAG, "client disconnected: %s cid=%u (said goodbye)", device->label().c_str(),
+                     (unsigned)device->cid());
         const MacAddress mac = device->address();
         s_devices.endSession(mac);
         s_reassembly.drop(mac);
@@ -722,6 +724,14 @@ void espBroker_shutdown(void)
 {
     if (!s_beaconActive.exchange(false, std::memory_order_acq_rel))
         return; // never came up, or already down
+
+    for (uint8_t i = 0; i < s_devices.getDeviceCount(); i++)
+    {
+        const Device *device = s_devices.deviceAt(i);
+        if (device != NULL && device->state() == ConnectionState::CONNECTED)
+            ESP_LOGI(EVENT_TAG, "client disconnected: %s cid=%u (gateway stopped)", device->label().c_str(),
+                     (unsigned)device->cid());
+    }
 
     esp_now_unregister_recv_cb();
     esp_now_unregister_send_cb();
