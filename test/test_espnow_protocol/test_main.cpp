@@ -20,6 +20,7 @@
 #include "../../src/NightmareGateway/NightMare/Device.cpp"
 #include "../../src/NightmareGateway/EspNow/espDeviceManager.cpp"
 #include "../../src/NightmareGateway/EspNow/Reassembly.cpp"
+#include "../../src/NightmareGateway/GatewayRecovery.cpp"
 
 using namespace NightMare;
 namespace A = NightMare::EspNowAuth;
@@ -217,11 +218,14 @@ static void test_fixed_payload_sizes(void)
 
 static void test_beacon(void)
 {
-    const Frame beacon = beaconFrame();
+    const Frame beacon = beaconFrame("nmnw-gateway-aabbcc");
     TEST_ASSERT_EQUAL(FrameCheck::OK, validateFrame((const uint8_t *)&beacon, frameSize(beacon)));
     TEST_ASSERT_EQUAL(0, beacon.header.cid);
     TEST_ASSERT_TRUE(beaconSupports(beacon, EspNowFrameVersion::V1));
     TEST_ASSERT_FALSE(beaconSupports(beacon, EspNowFrameVersion::V2));
+    char id[65] = {};
+    TEST_ASSERT_TRUE(beaconGatewayId(beacon, id, sizeof(id)));
+    TEST_ASSERT_EQUAL_STRING("nmnw-gateway-aabbcc", id);
 }
 
 // --- Crypto ------------------------------------------------------------------
@@ -411,6 +415,15 @@ static void test_connected_mac_and_cid(void)
     TEST_ASSERT_EQUAL(espDeviceManager::Verdict::IGNORE, m.admit(mac(2), header(FrameType::MESSAGE, cid)).verdict);
     // Handshake-only types are never session traffic.
     TEST_ASSERT_EQUAL(espDeviceManager::Verdict::IGNORE, m.admit(mac(1), header(FrameType::CONNACK, cid)).verdict);
+}
+
+static void test_live_authenticated_name_wins_over_retained_status(void)
+{
+    espDeviceManager m = manager();
+    Device *device = connect(m, mac(1));
+    device->setAssumedName("fresh-node");
+    TEST_ASSERT_TRUE(m.hasConnectedDeviceNamed("fresh-node"));
+    TEST_ASSERT_FALSE(m.hasConnectedDeviceNamed("old-node"));
 }
 
 // A CONNECT proves nothing, so it must not cost the session anything: it only
@@ -705,6 +718,71 @@ static void test_reassembly_out_of_order_and_timeout(void)
                       t.feed(mac(1), fragment(10, 99, 0, 2, 1), x, ReassemblyTable::TimeoutMs + 1, out));
 }
 
+static NightMare::Message retainedJson(const char *topic, const char *json)
+{
+    NightMare::Message message;
+    message.topic = topic;
+    message.payload.assign(json, json + strlen(json));
+    message.persistent = true;
+    message.direction = NightMare::Direction::REMOTE_TO_LOCAL;
+    return message;
+}
+
+static void test_gateway_lwt_replays_client_wills_once(void)
+{
+    GatewayRecovery recovery;
+    std::vector<NightMare::Message> wills;
+    TEST_ASSERT_TRUE(recovery.consume(retainedJson(
+        "gw/gateway/clients",
+        "{\"schema\":1,\"id\":\"gw\",\"generation\":\"new\",\"clients\":[{\"id\":\"mac\",\"name\":\"node\",\"connected\":true,\"last_will\":{\"topic\":\"node/status\",\"payload\":[123,125],\"retained\":true}}]}"), wills));
+    TEST_ASSERT_EQUAL(0, wills.size());
+    TEST_ASSERT_TRUE(recovery.consume(retainedJson(
+        "gw/status",
+        "{\"schema\":1,\"id\":\"gw\",\"kind\":\"gateway\",\"online\":true,\"generation\":\"new\"}"), wills));
+    TEST_ASSERT_TRUE(recovery.consume(retainedJson(
+        "gw/status",
+        "{\"schema\":1,\"id\":\"gw\",\"kind\":\"gateway\",\"online\":false,\"generation\":\"new\"}"), wills));
+    TEST_ASSERT_EQUAL(1, wills.size());
+    TEST_ASSERT_EQUAL_STRING("node/status", wills[0].topic.c_str());
+    TEST_ASSERT_TRUE(wills[0].persistent);
+    wills.clear();
+    recovery.consume(retainedJson(
+        "gw/status",
+        "{\"schema\":1,\"id\":\"gw\",\"kind\":\"gateway\",\"online\":false,\"generation\":\"new\"}"), wills);
+    TEST_ASSERT_EQUAL(0, wills.size());
+}
+
+static void test_old_gateway_generation_cannot_invalidate_new(void)
+{
+    GatewayRecovery recovery;
+    std::vector<NightMare::Message> wills;
+    recovery.consume(retainedJson(
+        "gw/gateway/clients",
+        "{\"schema\":1,\"id\":\"gw\",\"generation\":\"new\",\"clients\":[{\"last_will\":{\"topic\":\"node/status\",\"payload\":[120],\"retained\":true}}]}"), wills);
+    recovery.consume(retainedJson(
+        "gw/status",
+        "{\"schema\":1,\"id\":\"gw\",\"kind\":\"gateway\",\"online\":true,\"generation\":\"new\"}"), wills);
+    recovery.consume(retainedJson(
+        "gw/status",
+        "{\"schema\":1,\"id\":\"gw\",\"kind\":\"gateway\",\"online\":false,\"generation\":\"old\"}"), wills);
+    TEST_ASSERT_EQUAL(0, wills.size());
+}
+
+static void test_gateway_recovery_is_retained_order_independent(void)
+{
+    GatewayRecovery recovery;
+    std::vector<NightMare::Message> wills;
+    TEST_ASSERT_TRUE(recovery.consume(retainedJson(
+        "gw/status",
+        "{\"schema\":1,\"id\":\"gw\",\"kind\":\"gateway\",\"online\":false,\"generation\":\"boot\"}"), wills));
+    TEST_ASSERT_EQUAL(0, wills.size());
+    TEST_ASSERT_TRUE(recovery.consume(retainedJson(
+        "gw/gateway/clients",
+        "{\"schema\":1,\"id\":\"gw\",\"generation\":\"boot\",\"clients\":[{\"connected\":false,\"last_will\":{\"topic\":\"gone/status\",\"payload\":[120],\"retained\":true}},{\"connected\":true,\"last_will\":{\"topic\":\"live/status\",\"payload\":[123,125],\"retained\":true}}]}"), wills));
+    TEST_ASSERT_EQUAL(1, wills.size());
+    TEST_ASSERT_EQUAL_STRING("live/status", wills[0].topic.c_str());
+}
+
 extern "C" void app_main(void)
 {
     UNITY_BEGIN();
@@ -728,6 +806,7 @@ extern "C" void app_main(void)
     RUN_TEST(test_securing_gate);
     RUN_TEST(test_failed_encryption_is_not_connected);
     RUN_TEST(test_connected_mac_and_cid);
+    RUN_TEST(test_live_authenticated_name_wins_over_retained_status);
     RUN_TEST(test_connect_only_suspends_the_session);
     RUN_TEST(test_unproven_handshake_restores_the_session);
     RUN_TEST(test_handshake_timeout_restores_the_session);
@@ -745,5 +824,8 @@ extern "C" void app_main(void)
     RUN_TEST(test_reassembly_keyed_by_cid);
     RUN_TEST(test_reassembly_other_sender_isolated);
     RUN_TEST(test_reassembly_out_of_order_and_timeout);
+    RUN_TEST(test_gateway_lwt_replays_client_wills_once);
+    RUN_TEST(test_old_gateway_generation_cannot_invalidate_new);
+    RUN_TEST(test_gateway_recovery_is_retained_order_independent);
     UNITY_END();
 }

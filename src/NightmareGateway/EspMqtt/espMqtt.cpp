@@ -8,6 +8,7 @@
 #include "freertos/task.h"
 #include "creds.h"
 #include "brokerCreds.h"
+#include "NightmareGateway/GatewayState.h"
 #include <new>
 #include <utility>
 
@@ -59,7 +60,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "Connected to broker");
         s_connected.store(true, std::memory_order_release);
-        subscribeToEverything(event->client);
+        if (mqtt_prepare_session(event->client))
+            subscribeToEverything(event->client);
+        else
+            ESP_LOGE(TAG, "Gateway state publication failed; retained replay remains disabled");
         break;
 
     case MQTT_EVENT_DISCONNECTED:
@@ -140,6 +144,16 @@ void mqtt_stop(void)
 {
     if (s_client == NULL)
         return;
+    if (s_connected.load(std::memory_order_acquire))
+    {
+        NightMare::Message offline;
+        offline.topic = GatewayState::statusTopic();
+        const std::string payload = GatewayState::statusJson(false);
+        offline.payload.assign(payload.begin(), payload.end());
+        offline.persistent = true;
+        if (!mqtt_publish_immediate(s_client, offline))
+            ESP_LOGW(TAG, "Failed to publish graceful gateway offline status");
+    }
     esp_mqtt_client_stop(s_client);
     s_connected.store(false, std::memory_order_release);
     s_partialActive = false; // the client task is gone, so this is ours now
@@ -192,6 +206,14 @@ void mqtt_init(void)
 #endif
     config.session.protocol_ver = MQTT_PROTOCOL_V_5; // no_local is an MQTT 5 subscription option
     config.session.keepalive = 60;
+    const std::string willTopic = GatewayState::statusTopic();
+    const std::string willPayload = GatewayState::statusJson(false);
+    config.session.last_will.topic = willTopic.c_str();
+    config.session.last_will.msg = willPayload.c_str();
+    config.session.last_will.msg_len = willPayload.size();
+    config.session.last_will.qos = 1;
+    config.session.last_will.retain = true;
+    config.credentials.client_id = GatewayState::id().c_str();
 
     s_client = esp_mqtt_client_init(&config);
     if (s_client == NULL)
@@ -231,6 +253,16 @@ bool mqtt_publish(NightMare::Message message)
         return false;
     }
     return true;
+}
+
+bool mqtt_publish_immediate(esp_mqtt_client_handle_t client,
+                            const NightMare::Message &message)
+{
+    return client != NULL &&
+           esp_mqtt_client_publish(client, message.topic.c_str(),
+                                   reinterpret_cast<const char *>(message.payload.data()),
+                                   static_cast<int>(message.payload.size()), 1,
+                                   message.persistent) >= 0;
 }
 
 bool mqtt_is_connected(void)

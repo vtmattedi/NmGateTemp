@@ -312,6 +312,14 @@ Device *espDeviceManager::deviceAt(uint8_t index)
     return &devices[index];
 }
 
+bool espDeviceManager::hasConnectedDeviceNamed(const std::string &name) const
+{
+    for (const Device &device : devices)
+        if (device.isConnected() && device.assumedName() == name)
+            return true;
+    return false;
+}
+
 uint8_t espDeviceManager::getSubscriberCount() const
 {
     uint8_t count = 0;

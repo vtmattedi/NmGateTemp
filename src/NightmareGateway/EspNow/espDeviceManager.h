@@ -98,6 +98,7 @@ public:
 
     uint8_t getDeviceCount() const { return (uint8_t)devices.size(); }
     NightMare::Device *deviceAt(uint8_t index);
+    bool hasConnectedDeviceNamed(const std::string &name) const;
     uint8_t getSubscriberCount() const; // CONNECTED sessions with at least one subscription
     uint8_t pendingCount() const;
 

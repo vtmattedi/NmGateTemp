@@ -7,6 +7,9 @@
 #include "NightmareGateway/NightMare/Time.h"
 #include "NightmareGateway/GatewayStats.h"
 #include "NightmareGateway/EspNow/Auth.h"
+#include "NightmareGateway/GatewayState.h"
+#include "NightmareGateway/GatewayRecovery.h"
+#include "cJSON.h"
 #include "freertos/queue.h"
 #include <strings.h>
 #include "esp_timer.h"
@@ -29,6 +32,9 @@ TaskHandle_t gatewayTaskHandle = NULL;
 static QueueHandle_t s_inbound = NULL; // NightMare::Message* from the MQTT task
 static NightMare::MessageVault s_vault;
 static bool s_mqttStarted = false;
+static std::string s_lastPublishedClients;
+static std::string s_lastPublishedNetwork;
+static GatewayRecovery s_gatewayRecovery;
 static std::atomic<NightMareGatewayState> s_gatewayState{NightMareGatewayState::Stopped};
 static std::atomic<bool> s_enabled{true}; // cleared by "gateway off", see nightmare_gateway_enable()
 
@@ -74,6 +80,40 @@ static bool sendRemote(const NightMare::Message &message)
     if (!mqtt_is_connected() || !mqtt_publish(message))
         return false;
     gwCount(g_gatewayStats.msgsToRemote);
+    return true;
+}
+
+static NightMare::Message retainedMessage(const std::string &topic, const std::string &payload)
+{
+    NightMare::Message message;
+    message.topic = topic;
+    message.payload.assign(payload.begin(), payload.end());
+    message.persistent = true;
+    message.direction = NightMare::Direction::LOCAL_TO_REMOTE;
+    return message;
+}
+
+bool mqtt_prepare_session(esp_mqtt_client_handle_t client)
+{
+    std::vector<NightMare::RetainedEntry> retained;
+    s_vault.snapshot(retained);
+    for (const NightMare::RetainedEntry &entry : retained)
+    {
+        if (entry.message.direction == NightMare::Direction::LOCAL_TO_REMOTE &&
+            !mqtt_publish_immediate(client, entry.message))
+            return false;
+    }
+
+    std::vector<EspBrokerDeviceInfo> devices;
+    espBroker_snapshotDevices(devices);
+    const NightMare::Message status = retainedMessage(GatewayState::statusTopic(), GatewayState::statusJson(true));
+    const NightMare::Message network = retainedMessage(GatewayState::networkTopic(), GatewayState::networkJson(true));
+    const NightMare::Message clients = retainedMessage(GatewayState::clientsTopic(), GatewayState::clientsJson(devices));
+    if (!mqtt_publish_immediate(client, status) || !mqtt_publish_immediate(client, network) ||
+        !mqtt_publish_immediate(client, clients))
+        return false;
+    s_lastPublishedNetwork.assign(network.payload.begin(), network.payload.end());
+    s_lastPublishedClients.assign(clients.payload.begin(), clients.payload.end());
     return true;
 }
 
@@ -232,6 +272,30 @@ void onMessage(const NightMare::Device *device, NightMare::Message message)
     gwCount(device != nullptr ? g_gatewayStats.msgsFromLocal : g_gatewayStats.msgsFromRemote);
     message.direction = device != nullptr ? NightMare::Direction::LOCAL_TO_REMOTE : NightMare::Direction::REMOTE_TO_LOCAL;
 
+    if (device == nullptr && message.persistent)
+    {
+        std::vector<NightMare::Message> recovered;
+        if (s_gatewayRecovery.consume(message, recovered))
+        {
+            for (NightMare::Message &will : recovered)
+                onMessage(nullptr, std::move(will));
+            // Client projections are recovery-internal. Gateway presence must
+            // still reach local ESP-NOW subscribers so their retained
+            // candidate can be invalidated by the generation-matched LWT.
+            if (topicMatchesPattern(message.topic, "+/gateway/clients"))
+                return;
+        }
+    }
+
+    // A retained broker status is older than a live authenticated ESP-NOW
+    // session. Never let an offline replay overwrite the gateway-owned truth.
+    if (device == nullptr && message.persistent && topicMatchesPattern(message.topic, "+/status"))
+    {
+        const std::string name = message.topic.substr(0, message.topic.size() - strlen("/status"));
+        if (espBroker_connectedDeviceNamed(name))
+            return;
+    }
+
     if (resolveLocally(message))
         return;
 
@@ -358,6 +422,20 @@ static void updateStatusLed(void)
     ws2812_set_color(color);
 }
 
+static void publishGatewayProjection()
+{
+    if (!mqtt_is_connected())
+        return;
+    std::vector<EspBrokerDeviceInfo> devices;
+    espBroker_snapshotDevices(devices);
+    const std::string clients = GatewayState::clientsJson(devices);
+    if (clients != s_lastPublishedClients && mqtt_publish(retainedMessage(GatewayState::clientsTopic(), clients)))
+        s_lastPublishedClients = clients;
+    const std::string network = GatewayState::networkJson(true);
+    if (network != s_lastPublishedNetwork && mqtt_publish(retainedMessage(GatewayState::networkTopic(), network)))
+        s_lastPublishedNetwork = network;
+}
+
 void gateway_task(void *pvParameters)
 {
     esp_task_wdt_add(NULL);
@@ -412,6 +490,7 @@ void gateway_task(void *pvParameters)
             }
             espBroker_process();
             drainInbound();
+            publishGatewayProjection();
             break;
 
         case NightMareGatewayState::Stopped:
@@ -479,6 +558,7 @@ const char *nightmare_gateway_state_name(NightMareGatewayState state)
 
 BaseType_t start_nightmare_gateway(const NightMareGatewayConfig &config)
 {
+    GatewayState::begin();
     // mqttBroker is not implemented; the flag is ignored.
     s_espnowEnabled = config.espnowBroker;
     s_mqttEnabled = config.mqttClient;

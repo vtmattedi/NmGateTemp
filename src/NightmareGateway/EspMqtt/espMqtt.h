@@ -1,5 +1,6 @@
 #pragma once
 #include "NightmareGateway/NightMare/Message.h"
+#include "mqtt_client.h"
 
 // Connects to the broker configured in creds.h (REMOTE_MQTT_*), subscribes to
 // every topic ("#") and starts the client's own background task. Call after
@@ -16,9 +17,18 @@ void mqtt_stop(void);
 // Takes ownership so large payloads can be queued without another allocation.
 bool mqtt_publish(NightMare::Message message);
 
+// Synchronous retained publication used only during MQTT_EVENT_CONNECTED to
+// establish gateway-owned truth before subscriptions admit retained replay.
+bool mqtt_publish_immediate(esp_mqtt_client_handle_t client,
+                            const NightMare::Message &message);
+
 // True once the broker has accepted the connection.
 bool mqtt_is_connected(void);
 
 // Hook invoked whenever a message arrives on any subscribed topic. Runs in
 // the esp-mqtt client task context. Implemented by the gateway.
 void mqtt_onMessage(NightMare::Message message);
+
+// Publishes the gateway's retained state and client snapshot. Called before
+// the MQTT transport subscribes to normal topics.
+bool mqtt_prepare_session(esp_mqtt_client_handle_t client);

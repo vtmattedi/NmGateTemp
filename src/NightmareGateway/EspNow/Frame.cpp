@@ -159,14 +159,25 @@ namespace NightMare
         return true;
     }
 
-    Frame beaconFrame()
+    Frame beaconFrame(const char *gatewayId)
     {
         static const uint8_t versions[] = {static_cast<uint8_t>(EspNowFrameVersion::V1)};
-        uint8_t data[1 + sizeof(versions)];
+        uint8_t data[MaxFrameDataSize] = {};
         data[0] = sizeof(versions);
         memcpy(data + 1, versions, sizeof(versions));
+        size_t length = 1 + sizeof(versions);
+        const size_t idLength = gatewayId == nullptr ? 0 : strlen(gatewayId);
+        if (idLength <= 64 && length + 1 + idLength <= sizeof(data))
+        {
+            data[length++] = static_cast<uint8_t>(idLength);
+            if (idLength != 0)
+            {
+                memcpy(data + length, gatewayId, idLength);
+                length += idLength;
+            }
+        }
         Frame frame{};
-        makeFrame(frame, FrameType::BEACON, 0, 0, data, sizeof(data));
+        makeFrame(frame, FrameType::BEACON, 0, 0, data, length);
         return frame;
     }
 
@@ -179,5 +190,21 @@ namespace NightMare
             if (beacon.data[1 + i] == static_cast<uint8_t>(version))
                 return true;
         return false;
+    }
+
+    bool beaconGatewayId(const Frame &beacon, char *out, size_t outSize)
+    {
+        if (out == nullptr || outSize == 0 || beacon.header.length < 2)
+            return false;
+        const size_t count = beacon.data[0];
+        const size_t lengthOffset = 1 + count;
+        if (lengthOffset >= beacon.header.length)
+            return false;
+        const size_t idLength = beacon.data[lengthOffset];
+        if (idLength == 0 || idLength >= outSize || lengthOffset + 1 + idLength > beacon.header.length)
+            return false;
+        memcpy(out, beacon.data + lengthOffset + 1, idLength);
+        out[idLength] = '\0';
+        return true;
     }
 }

@@ -169,7 +169,8 @@ namespace NightMare
 
     // Broadcast, plaintext, cid 0. Data: [count][EspNowFrameVersion...], the
     // framing versions this gateway runs. No secret material.
-    Frame beaconFrame();
+    Frame beaconFrame(const char *gatewayId = nullptr);
     // Whether a beacon's data lists `version`.
     bool beaconSupports(const Frame &beacon, EspNowFrameVersion version);
+    bool beaconGatewayId(const Frame &beacon, char *out, size_t outSize);
 }

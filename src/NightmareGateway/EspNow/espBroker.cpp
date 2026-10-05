@@ -5,6 +5,7 @@
 #include "NightmareGateway/NightMare/Topic.h"
 #include "NightmareGateway/GatewayStats.h"
 #include "System/events.h"
+#include "NightmareGateway/GatewayState.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
@@ -232,7 +233,7 @@ bool espBroker_sendFrame(const Device *device, const Frame &frame)
 
 static void sendBeacon()
 {
-    const Frame frame = NightMare::beaconFrame();
+    const Frame frame = NightMare::beaconFrame(GatewayState::id().c_str());
     sendRawFrame(BROADCAST_MAC, frame);
 }
 
@@ -641,6 +642,8 @@ static void refreshSnapshot(void)
         info.subscriptions = device->subscriptionList();
         info.hasLastWill = device->hasLastWill();
         info.lastWillTopic = device->lastWillMessage().topic;
+        info.lastWillPayload = device->lastWillMessage().payload;
+        info.lastWillRetained = device->lastWillMessage().persistent;
         info.lastWillPayloadSize = device->lastWillMessage().payload.size();
         info.hasRssi = device->hasRssi();
         info.rssi = device->lastRssi();
@@ -782,4 +785,9 @@ uint32_t espBroker_sessionTimeoutMs(void)
 const Device *espBroker_deviceAt(uint8_t index)
 {
     return s_devices.deviceAt(index);
+}
+
+bool espBroker_connectedDeviceNamed(const std::string &name)
+{
+    return s_devices.hasConnectedDeviceNamed(name);
 }

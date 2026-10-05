@@ -56,6 +56,7 @@ uint8_t espBroker_subscriberCount(void);
 // not meaningful and may change as devices connect/disconnect.
 uint8_t espBroker_deviceCount(void);
 const NightMare::Device *espBroker_deviceAt(uint8_t index);
+bool espBroker_connectedDeviceNamed(const std::string &name);
 
 // Everything the web UI shows about one session, copied so it can be read from
 // any task. Published by the gateway task a couple of times a second.
@@ -69,6 +70,8 @@ struct EspBrokerDeviceInfo
     std::vector<std::string> subscriptions;
     bool hasLastWill = false;
     std::string lastWillTopic;
+    std::vector<uint8_t> lastWillPayload;
+    bool lastWillRetained = false;
     size_t lastWillPayloadSize = 0;
     bool hasRssi = false;
     int8_t rssi = 0;
