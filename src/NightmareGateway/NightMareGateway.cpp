@@ -8,6 +8,7 @@
 #include "NightmareGateway/GatewayStats.h"
 #include "NightmareGateway/EspNow/Auth.h"
 #include "NightmareGateway/GatewayState.h"
+#include "creds.h"
 #include "NightmareGateway/GatewayRecovery.h"
 #include "cJSON.h"
 #include "freertos/queue.h"
@@ -436,6 +437,17 @@ static void publishGatewayProjection()
         s_lastPublishedNetwork = network;
 }
 
+// TLS verifies the broker certificate's validity dates, so connecting before
+// SNTP has set the clock fails (-0x2700, cert not yet valid).
+static bool mqttClockReady()
+{
+#if defined(REMOTE_MQTT_URL) && defined(REMOTE_MQTT_PORT)
+    return NightMare::valid();
+#else
+    return true;
+#endif
+}
+
 void gateway_task(void *pvParameters)
 {
     esp_task_wdt_add(NULL);
@@ -482,7 +494,7 @@ void gateway_task(void *pvParameters)
             break;
 
         case NightMareGatewayState::Running:
-            if (s_mqttEnabled && !s_mqttStarted && wifi_is_connected())
+            if (s_mqttEnabled && !s_mqttStarted && wifi_is_connected() && mqttClockReady())
             {
                 ESP_LOGI(TAG, "Network up, starting MQTT");
                 mqtt_init();

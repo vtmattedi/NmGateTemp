@@ -22,10 +22,21 @@ static std::atomic<bool> s_connected{false};
 // watchdog, so publishes are handed to this queue and a task of their own
 // does the blocking call instead.
 #define OUTBOUND_QUEUE_DEPTH 32
-#define PUBLISHER_STACK_SIZE 4096
+#define PUBLISHER_STACK_SIZE 6144
 #define PUBLISHER_PRIORITY 4
-static QueueHandle_t s_outbound = NULL; // NightMare::Message*
+static QueueHandle_t s_outbound = NULL; // NightMare::Message*; NULL is the "session connected" marker
 static std::atomic<uint32_t> s_dropped{0};
+
+// MQTT 5 brokers cap unacknowledged QoS1 publishes (Receive Maximum; 10 on the
+// broker in use) and esp-mqtt refuses to send past it. PUBACKs are read by the
+// esp-mqtt task, so nothing may publish from its event handler in bulk: the
+// acks that would free a slot can't be processed until the handler returns.
+// Publishing therefore stays on the publisher task, paced to this window.
+#define MAX_INFLIGHT_PUBLISHES 8
+#define INFLIGHT_WAIT_MS 5000
+static std::atomic<int> s_inflight{0};
+static std::atomic<bool> s_sessionPending{false};
+static std::atomic<uint32_t> s_session{0}; // bumped on every CONNECTED
 
 // Reassembly of a multi-event payload. Only ever touched by the esp-mqtt task.
 static NightMare::Message s_partial;
@@ -49,6 +60,50 @@ static void subscribeToEverything(esp_mqtt_client_handle_t client)
     esp_mqtt_client_subscribe(client, "#", 1);
 }
 
+// Waits for a free slot in the broker's receive window, then publishes. False
+// when the connection went away, no ack freed a slot in time, or the publish
+// itself was refused. Never call from the esp-mqtt task (it would wait on itself).
+static bool publish_paced(esp_mqtt_client_handle_t client, const NightMare::Message &message)
+{
+    const TickType_t started = xTaskGetTickCount();
+    while (s_inflight.load(std::memory_order_acquire) >= MAX_INFLIGHT_PUBLISHES)
+    {
+        if (!s_connected.load(std::memory_order_acquire) ||
+            (xTaskGetTickCount() - started) >= pdMS_TO_TICKS(INFLIGHT_WAIT_MS))
+            return false;
+        vTaskDelay(pdMS_TO_TICKS(5));
+    }
+
+    s_inflight.fetch_add(1); // before publishing: the ack can beat us back here
+    if (esp_mqtt_client_publish(client, message.topic.c_str(),
+                                reinterpret_cast<const char *>(message.payload.data()),
+                                (int)message.payload.size(), 1, message.persistent) < 0)
+    {
+        s_inflight.fetch_sub(1);
+        return false;
+    }
+    return true;
+}
+
+// Publishes the gateway's retained truth, and only then subscribes so the
+// broker's retained replay can't overwrite it. On failure the connection is
+// dropped: a half-prepared session would look up while nothing is subscribed.
+static void run_session_setup(void)
+{
+    const uint32_t session = s_session.load();
+    const bool prepared = mqtt_prepare_session(s_client);
+    if (session != s_session.load() || !s_connected.load(std::memory_order_acquire))
+        return; // the connection went away meanwhile; the next CONNECTED starts over
+
+    if (prepared)
+    {
+        subscribeToEverything(s_client);
+        return;
+    }
+    ESP_LOGE(TAG, "Gateway state publication failed; reconnecting");
+    esp_mqtt_client_disconnect(s_client);
+}
+
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     (void)handler_args;
@@ -59,16 +114,25 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "Connected to broker");
+        s_inflight.store(0); // esp-mqtt starts the session with an empty outbox
+        s_session.fetch_add(1);
         s_connected.store(true, std::memory_order_release);
-        if (mqtt_prepare_session(event->client))
-            subscribeToEverything(event->client);
-        else
-            ESP_LOGE(TAG, "Gateway state publication failed; retained replay remains disabled");
+        s_sessionPending.store(true, std::memory_order_release);
+        {
+            NightMare::Message *marker = NULL; // wakes the publisher task if it is idle
+            xQueueSend(s_outbound, &marker, 0);
+        }
         break;
 
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGW(TAG, "Disconnected from broker");
         s_connected.store(false, std::memory_order_release);
+        s_inflight.store(0);
+        break;
+
+    case MQTT_EVENT_PUBLISHED:
+        if (s_inflight.load() > 0)
+            s_inflight.fetch_sub(1);
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
@@ -121,12 +185,16 @@ static void publisher_task(void *)
         if (xQueueReceive(s_outbound, &message, portMAX_DELAY) != pdTRUE)
             continue;
 
+        // Before anything queued behind it, so the retained replay goes first.
+        if (s_sessionPending.exchange(false, std::memory_order_acq_rel))
+            run_session_setup();
+
+        if (message == NULL)
+            continue; // just the wake-up marker
+
         // Offline: drop rather than let esp-mqtt's outbox pile up QoS1 messages
         // for a broker that is gone. Anything persistent is in the vault anyway.
-        if (!s_connected.load(std::memory_order_acquire) ||
-            esp_mqtt_client_publish(s_client, message->topic.c_str(),
-                                    reinterpret_cast<const char *>(message->payload.data()),
-                                    (int)message->payload.size(), 1, message->persistent) < 0)
+        if (!s_connected.load(std::memory_order_acquire) || !publish_paced(s_client, *message))
             s_dropped.fetch_add(1);
         delete message;
 
@@ -258,11 +326,7 @@ bool mqtt_publish(NightMare::Message message)
 bool mqtt_publish_immediate(esp_mqtt_client_handle_t client,
                             const NightMare::Message &message)
 {
-    return client != NULL &&
-           esp_mqtt_client_publish(client, message.topic.c_str(),
-                                   reinterpret_cast<const char *>(message.payload.data()),
-                                   static_cast<int>(message.payload.size()), 1,
-                                   message.persistent) >= 0;
+    return client != NULL && publish_paced(client, message);
 }
 
 bool mqtt_is_connected(void)

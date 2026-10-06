@@ -17,8 +17,10 @@ void mqtt_stop(void);
 // Takes ownership so large payloads can be queued without another allocation.
 bool mqtt_publish(NightMare::Message message);
 
-// Synchronous retained publication used only during MQTT_EVENT_CONNECTED to
+// Synchronous publication used by mqtt_prepare_session() and mqtt_stop() to
 // establish gateway-owned truth before subscriptions admit retained replay.
+// Blocks (up to a few seconds) for a free slot in the broker's QoS1 window, so
+// never call it from an MQTT event handler.
 bool mqtt_publish_immediate(esp_mqtt_client_handle_t client,
                             const NightMare::Message &message);
 
@@ -29,6 +31,7 @@ bool mqtt_is_connected(void);
 // the esp-mqtt client task context. Implemented by the gateway.
 void mqtt_onMessage(NightMare::Message message);
 
-// Publishes the gateway's retained state and client snapshot. Called before
-// the MQTT transport subscribes to normal topics.
+// Publishes the gateway's retained state and client snapshot. Called from the
+// publisher task after each connect, before the transport subscribes to normal
+// topics.
 bool mqtt_prepare_session(esp_mqtt_client_handle_t client);

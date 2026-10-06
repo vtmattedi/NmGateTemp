@@ -92,6 +92,7 @@ namespace NightMare
         // The filters in use, for telemetry.
         std::vector<std::string> subscriptionList() const;
         size_t subscriptionCount() const;
+        size_t subscriptionCapacity() const { return MaxSubscriptions; }
         bool hasLastWill() const { return !lastWill.topic.empty(); }
         const Message &lastWillMessage() const { return lastWill; }
         // Rejects wildcard/empty/oversized topics, the same rule an ordinary

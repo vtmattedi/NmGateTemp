@@ -426,12 +426,27 @@ static void handleSessionFrame(Device *device, const Frame &frame)
     {
         const std::string filter(reinterpret_cast<const char *>(frame.data), frame.header.length);
         const bool ok = device->subscribeTo(filter);
-        ESP_LOGI(TAG, "%s subscribes to '%s'%s", device->address().toString().c_str(),
-                 filter.c_str(), ok ? "" : " (rejected)");
         if (ok)
+        {
+            ESP_LOGI(TAG, "%s subscribed request #%u cid=%u filter='%s' length=%u subscriptions=%u/%u",
+                     device->label().c_str(), (unsigned)frame.header.messageId, (unsigned)device->cid(),
+                     filter.c_str(), (unsigned)filter.size(), (unsigned)device->subscriptionCount(),
+                     (unsigned)device->subscriptionCapacity());
             reply(device, FrameType::ACK, frame.header.messageId);
+        }
         else
+        {
+            const char *reason = filter.empty() ? "empty filter"
+                                 : filter.size() > NightMare::MaxTopicLength ? "filter too long"
+                                                                           : "subscription table full";
+            ESP_LOGW(TAG,
+                     "%s rejected SUBSCRIBE request #%u cid=%u filter='%s' length=%u reason=%s "
+                     "subscriptions=%u/%u",
+                     device->label().c_str(), (unsigned)frame.header.messageId, (unsigned)device->cid(),
+                     filter.c_str(), (unsigned)filter.size(), reason, (unsigned)device->subscriptionCount(),
+                     (unsigned)device->subscriptionCapacity());
             sendError(device->address(), device->cid(), frame.header.messageId, ErrorCode::REJECTED);
+        }
         if (ok)
             espBroker_onSubscribe(device, filter);
         break;
